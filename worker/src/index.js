@@ -96,7 +96,10 @@ function isValidUrl(url) {
 }
 
 function isValidAlias(alias) {
-  return /^[a-zA-Z0-9_-]{2,20}$/.test(alias);
+  if (!alias) return false;
+  const codepoints = [...alias].length;
+  if (codepoints < 2 || codepoints > 40) return false;
+  return !/[\s/?#\x00-\x1f\\]/.test(alias);
 }
 
 function isValidEmail(email) {
@@ -145,7 +148,7 @@ function parseUA(ua) {
   if (!ua) return { device: "unknown", browser: "unknown", browser_version: "", os: "unknown" };
 
   let device;
-  if (/bot|crawl|spider/i.test(ua)) device = "bot";
+  if (/bot|crawl|spider|Twitterbot|facebookexternalhit|LinkedInBot|TelegramBot|Slackbot|WhatsApp|Discordbot/i.test(ua)) device = "bot";
   else if (/iPad|Tablet/i.test(ua)) device = "tablet";
   else if (/Mobi|Android|iPhone/i.test(ua)) device = "mobile";
   else device = "desktop";
@@ -211,16 +214,19 @@ function buildAnalyticsSummary(entry) {
   const now = Date.now();
   const h24Cutoff = now - 24 * 60 * 60 * 1000;
   const d7Cutoff = now - 7 * 24 * 60 * 60 * 1000;
+  const d30Cutoff = now - 30 * 24 * 60 * 60 * 1000;
 
   const clicks_by_country = {};
   const clicks_by_device = {};
   const clicks_by_browser = {};
   const clicks_by_os = {};
   const clicks_by_referrer = {};
+  const clicks_by_utm_source = {};
+  const clicks_by_utm_medium = {};
+  const clicks_by_utm_campaign = {};
   const clicks_today_by_hour = new Array(24).fill(0);
 
-  let clicks_last_24h = 0,
-    clicks_last_7d = 0;
+  let clicks_last_24h = 0, clicks_last_7d = 0, clicks_last_30d = 0, bot_clicks = 0;
   const nowDate = new Date();
   const todayY = nowDate.getUTCFullYear(),
     todayM = nowDate.getUTCMonth(),
@@ -231,19 +237,29 @@ function buildAnalyticsSummary(entry) {
     if (!isNaN(ts)) {
       if (ts > h24Cutoff) clicks_last_24h++;
       if (ts > d7Cutoff) clicks_last_7d++;
+      if (ts > d30Cutoff) clicks_last_30d++;
       const cd = new Date(click.ts);
       if (cd.getUTCFullYear() === todayY && cd.getUTCMonth() === todayM && cd.getUTCDate() === todayD) {
         clicks_today_by_hour[cd.getUTCHours()]++;
       }
     }
+    if ((click.device || "") === "bot") bot_clicks++;
     increment(clicks_by_country, click.country || "unknown");
     increment(clicks_by_device, click.device || "unknown");
     increment(clicks_by_browser, click.browser || "unknown");
     increment(clicks_by_os, click.os || "unknown");
     increment(clicks_by_referrer, click.referrer_domain || "direct");
+    if (click.utm_source) increment(clicks_by_utm_source, click.utm_source);
+    if (click.utm_medium) increment(clicks_by_utm_medium, click.utm_medium);
+    if (click.utm_campaign) increment(clicks_by_utm_campaign, click.utm_campaign);
   }
 
-  return { clicks_by_country, clicks_by_device, clicks_by_browser, clicks_by_os, clicks_by_referrer, clicks_last_24h, clicks_last_7d, clicks_today_by_hour };
+  return {
+    clicks_by_country, clicks_by_device, clicks_by_browser, clicks_by_os, clicks_by_referrer,
+    clicks_by_utm_source, clicks_by_utm_medium, clicks_by_utm_campaign,
+    clicks_last_24h, clicks_last_7d, clicks_last_30d, bot_clicks,
+    clicks_today_by_hour,
+  };
 }
 
 // --------------- Disabled / Expired pages -------------------
@@ -402,7 +418,7 @@ function disabledPage(request) {
       "Bauna Ho Gaya",
       `
 <div class="wrap">
-  <div class="url-shrink">https://snip.losthusky.qzz.io/...</div>
+  <div class="url-shrink">https://baunafier.qzz.io/...</div>
   <div class="big">Bauna ho gaya.</div>
   <p class="sub">Link ne chhota hona bhi band kar diya.</p>
   <p class="note">*bauna = dwarf / short in Hindi</p>
@@ -555,6 +571,203 @@ async function handleSignup(request, env) {
   return jsonResponse({ token, user: { id: userId, email: normalEmail, role, created_at: user.created_at } }, 201);
 }
 
+// --------------- OAuth popup helpers ------------------------
+
+function oauthSuccessPage(token, user, frontendUrl) {
+  const origin = frontendUrl || "*";
+  const data = JSON.stringify({ type: "OAUTH_SUCCESS", token, user });
+  return `<!DOCTYPE html><html><head><title>Signing in\u2026</title>
+<style>body{background:#0a0a0a;color:#888;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;font-size:14px;margin:0}</style>
+</head><body><p>Signing you in\u2026</p>
+<script>(function(){try{if(window.opener){window.opener.postMessage(${data},${JSON.stringify(origin)});setTimeout(function(){window.close();},300);}else{window.location.href=${JSON.stringify((frontendUrl || "") + "/dashboard")};}}catch(e){window.location.href=${JSON.stringify((frontendUrl || "") + "/dashboard")};}})();<\/script>
+</body></html>`;
+}
+
+function oauthErrorPage(error, frontendUrl) {
+  const origin = frontendUrl || "*";
+  const data = JSON.stringify({ type: "OAUTH_ERROR", error });
+  return `<!DOCTYPE html><html><head><title>Auth Error</title>
+<style>body{background:#0a0a0a;color:#f44;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;font-size:14px;margin:0}</style>
+</head><body><p>Auth error \u2014 please close this window and try again.</p>
+<script>(function(){try{if(window.opener){window.opener.postMessage(${data},${JSON.stringify(origin)});setTimeout(function(){window.close();},300);}else{window.location.href=${JSON.stringify((frontendUrl || "") + "/login")};}}catch(e){document.querySelector('p').textContent='Auth error: '+${JSON.stringify(String(error))};;}})();<\/script>
+</body></html>`;
+}
+
+// --------------- GitHub OAuth ---------------------------
+
+/** GET /api/auth/github/init */
+async function handleGithubInit(request, env) {
+  const frontendUrl = env.FRONTEND_URL || "";
+  if (!env.GITHUB_CLIENT_ID) return htmlResponse(oauthErrorPage("GitHub sign-in is not configured.", frontendUrl));
+  const state = generateToken().slice(0, 24);
+  await env.KV.put(`oauth_state:${state}`, JSON.stringify({ provider: "github", ts: Date.now() }), { expirationTtl: 600 });
+  const origin = new URL(request.url).origin;
+  const params = new URLSearchParams({
+    client_id: env.GITHUB_CLIENT_ID,
+    redirect_uri: `${origin}/api/auth/github/callback`,
+    scope: "user:email",
+    state,
+    allow_signup: "true",
+  });
+  return Response.redirect(`https://github.com/login/oauth/authorize?${params}`, 302);
+}
+
+/** GET /api/auth/github/callback */
+async function handleGithubCallback(request, env) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const frontendUrl = env.FRONTEND_URL || "";
+
+  if (!code || !state) return htmlResponse(oauthErrorPage("Missing code or state.", frontendUrl));
+  const stateRaw = await env.KV.get(`oauth_state:${state}`);
+  if (!stateRaw) return htmlResponse(oauthErrorPage("Invalid or expired state. Please try again.", frontendUrl));
+  await env.KV.delete(`oauth_state:${state}`);
+
+  const tokenResp = await fetch("https://github.com/login/oauth/access_token", {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: env.GITHUB_CLIENT_ID, client_secret: env.GITHUB_CLIENT_SECRET, code }),
+  });
+  if (!tokenResp.ok) return htmlResponse(oauthErrorPage("GitHub token exchange failed.", frontendUrl));
+  const tokenData = await tokenResp.json();
+  if (tokenData.error) return htmlResponse(oauthErrorPage(tokenData.error_description || tokenData.error, frontendUrl));
+
+  const accessToken = tokenData.access_token;
+
+  const ghUserResp = await fetch("https://api.github.com/user", {
+    headers: { Authorization: `Bearer ${accessToken}`, "User-Agent": "URL-Baunafier/1.2" },
+  });
+  if (!ghUserResp.ok) return htmlResponse(oauthErrorPage("GitHub user fetch failed.", frontendUrl));
+  const ghUser = await ghUserResp.json();
+
+  let email = ghUser.email;
+  if (!email) {
+    const emailResp = await fetch("https://api.github.com/user/emails", {
+      headers: { Authorization: `Bearer ${accessToken}`, "User-Agent": "URL-Baunafier/1.2" },
+    });
+    if (emailResp.ok) {
+      const emails = await emailResp.json();
+      const primary = emails.find((e) => e.primary && e.verified);
+      email = primary ? primary.email : (emails.find((e) => e.verified) || emails[0] || null)?.email || null;
+    }
+  }
+  if (!email) return htmlResponse(oauthErrorPage("No verified email on GitHub account. Please make a verified email public in GitHub settings.", frontendUrl));
+
+  const normalEmail = email.toLowerCase().trim();
+  let userId = await env.KV.get(`email:${normalEmail}`);
+  let userData;
+
+  if (!userId) {
+    userId = "usr_" + generateToken().slice(0, 12);
+    const role = env.ADMIN_EMAIL && normalEmail === env.ADMIN_EMAIL.toLowerCase().trim() ? "admin" : "user";
+    userData = { id: userId, email: normalEmail, passwordHash: null, salt: null, githubId: String(ghUser.id), role, created_at: new Date().toISOString(), disabled: false };
+    await Promise.all([env.KV.put(`user:${userId}`, JSON.stringify(userData)), env.KV.put(`email:${normalEmail}`, userId)]);
+  } else {
+    const raw = await env.KV.get(`user:${userId}`);
+    if (!raw) return htmlResponse(oauthErrorPage("Account data not found.", frontendUrl));
+    userData = JSON.parse(raw);
+    if (userData.disabled) return htmlResponse(oauthErrorPage("Account is disabled.", frontendUrl));
+    if (!userData.githubId) {
+      userData.githubId = String(ghUser.id);
+      await env.KV.put(`user:${userId}`, JSON.stringify(userData));
+    }
+  }
+
+  const token = generateToken();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_SEC * 1000).toISOString();
+  await env.KV.put(`session:${token}`, JSON.stringify({ userId, role: userData.role, expiresAt }), { expirationTtl: SESSION_TTL_SEC });
+
+  const { passwordHash: _ph, salt: _s, ...safeUser } = userData;
+  return htmlResponse(oauthSuccessPage(token, safeUser, frontendUrl));
+}
+
+// --------------- Discord OAuth --------------------------
+
+/** GET /api/auth/discord/init */
+async function handleDiscordInit(request, env) {
+  const frontendUrl = env.FRONTEND_URL || "";
+  if (!env.DISCORD_CLIENT_ID) return htmlResponse(oauthErrorPage("Discord sign-in is not configured.", frontendUrl));
+  const state = generateToken().slice(0, 24);
+  await env.KV.put(`oauth_state:${state}`, JSON.stringify({ provider: "discord", ts: Date.now() }), { expirationTtl: 600 });
+  const origin = new URL(request.url).origin;
+  const params = new URLSearchParams({
+    client_id: env.DISCORD_CLIENT_ID,
+    redirect_uri: `${origin}/api/auth/discord/callback`,
+    response_type: "code",
+    scope: "identify email",
+    state,
+  });
+  return Response.redirect(`https://discord.com/api/oauth2/authorize?${params}`, 302);
+}
+
+/** GET /api/auth/discord/callback */
+async function handleDiscordCallback(request, env) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const frontendUrl = env.FRONTEND_URL || "";
+
+  if (!code || !state) return htmlResponse(oauthErrorPage("Missing code or state.", frontendUrl));
+  const stateRaw = await env.KV.get(`oauth_state:${state}`);
+  if (!stateRaw) return htmlResponse(oauthErrorPage("Invalid or expired state. Please try again.", frontendUrl));
+  await env.KV.delete(`oauth_state:${state}`);
+
+  const origin = new URL(request.url).origin;
+  const tokenResp = await fetch("https://discord.com/api/oauth2/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: env.DISCORD_CLIENT_ID,
+      client_secret: env.DISCORD_CLIENT_SECRET,
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: `${origin}/api/auth/discord/callback`,
+    }),
+  });
+  if (!tokenResp.ok) return htmlResponse(oauthErrorPage("Discord token exchange failed.", frontendUrl));
+  const tokenData = await tokenResp.json();
+  if (tokenData.error) return htmlResponse(oauthErrorPage(tokenData.error_description || tokenData.error, frontendUrl));
+
+  const accessToken = tokenData.access_token;
+
+  const dcUserResp = await fetch("https://discord.com/api/users/@me", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!dcUserResp.ok) return htmlResponse(oauthErrorPage("Discord user fetch failed.", frontendUrl));
+  const dcUser = await dcUserResp.json();
+
+  if (!dcUser.email) return htmlResponse(oauthErrorPage("No email on Discord account. Please add and verify an email in Discord settings.", frontendUrl));
+  if (!dcUser.verified) return htmlResponse(oauthErrorPage("Discord email is not verified. Please verify your email in Discord settings first.", frontendUrl));
+
+  const normalEmail = dcUser.email.toLowerCase().trim();
+  let userId = await env.KV.get(`email:${normalEmail}`);
+  let userData;
+
+  if (!userId) {
+    userId = "usr_" + generateToken().slice(0, 12);
+    const role = env.ADMIN_EMAIL && normalEmail === env.ADMIN_EMAIL.toLowerCase().trim() ? "admin" : "user";
+    userData = { id: userId, email: normalEmail, passwordHash: null, salt: null, discordId: String(dcUser.id), role, created_at: new Date().toISOString(), disabled: false };
+    await Promise.all([env.KV.put(`user:${userId}`, JSON.stringify(userData)), env.KV.put(`email:${normalEmail}`, userId)]);
+  } else {
+    const raw = await env.KV.get(`user:${userId}`);
+    if (!raw) return htmlResponse(oauthErrorPage("Account data not found.", frontendUrl));
+    userData = JSON.parse(raw);
+    if (userData.disabled) return htmlResponse(oauthErrorPage("Account is disabled.", frontendUrl));
+    if (!userData.discordId) {
+      userData.discordId = String(dcUser.id);
+      await env.KV.put(`user:${userId}`, JSON.stringify(userData));
+    }
+  }
+
+  const token = generateToken();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_SEC * 1000).toISOString();
+  await env.KV.put(`session:${token}`, JSON.stringify({ userId, role: userData.role, expiresAt }), { expirationTtl: SESSION_TTL_SEC });
+
+  const { passwordHash: _ph, salt: _s, ...safeUser } = userData;
+  return htmlResponse(oauthSuccessPage(token, safeUser, frontendUrl));
+}
+
 /** POST /api/auth/google — verify Google ID token, find/create user, return session */
 async function handleGoogleAuth(request, env) {
   let body;
@@ -689,11 +902,11 @@ async function handleShorten(request, env) {
     return jsonResponse({ error: "Invalid JSON body." }, 400);
   }
 
-  const { url, alias, expires_minutes, enabled = true } = body;
+  const { url, alias, expires_minutes, enabled = true, password, max_clicks, ios_url, android_url, og_title, og_description, og_image } = body;
   if (!url || !isValidUrl(url)) return jsonResponse({ error: "Invalid URL. Only http and https are allowed." }, 400);
 
   if (alias !== undefined && alias !== null && alias !== "") {
-    if (!isValidAlias(alias)) return jsonResponse({ error: "Alias must be 2-20 characters: letters, numbers, _ or -" }, 400);
+    if (!isValidAlias(alias)) return jsonResponse({ error: "Alias must be 2\u201340 characters with no spaces or path characters." }, 400);
     const taken = await env.KV.get(`link:${alias}`);
     if (taken) return jsonResponse({ error: "Alias already taken." }, 409);
   }
@@ -742,6 +955,21 @@ async function handleShorten(request, env) {
     click_log: [],
     userId: session.userId,
   };
+
+  if (password && typeof password === 'string' && password.length > 0) {
+    const salt = generateSalt();
+    entry.password_hash = await hashPassword(password, salt);
+    entry.password_salt = salt;
+  }
+  if (max_clicks != null && Number.isFinite(Number(max_clicks)) && Number(max_clicks) > 0) {
+    entry.max_clicks = Math.floor(Number(max_clicks));
+  }
+  if (ios_url && isValidUrl(ios_url)) entry.ios_url = ios_url;
+  if (android_url && isValidUrl(android_url)) entry.android_url = android_url;
+  if (og_title) entry.og_title = String(og_title).trim().slice(0, 200);
+  if (og_description) entry.og_description = String(og_description).trim().slice(0, 500);
+  if (og_image && isValidUrl(og_image)) entry.og_image = og_image;
+
   const kvOpts = expires_at ? { expiration: Math.floor(new Date(expires_at).getTime() / 1000) } : {};
   await env.KV.put(`link:${code}`, JSON.stringify(entry), kvOpts);
 
@@ -815,6 +1043,31 @@ async function handleUpdateLink(code, request, env) {
 
   if (body.enabled !== undefined) entry.enabled = Boolean(body.enabled);
   if ("expires_at" in body) entry.expires_at = body.expires_at || null;
+  if ("original_url" in body && body.original_url && isValidUrl(body.original_url)) {
+    const oldHash = await sha256Hex(entry.original_url);
+    await env.KV.delete(`urlhash:${oldHash}`);
+    entry.original_url = body.original_url;
+    await env.KV.put(`urlhash:${await sha256Hex(entry.original_url)}`, code);
+  }
+  if ("password" in body) {
+    if (!body.password) {
+      delete entry.password_hash;
+      delete entry.password_salt;
+    } else if (typeof body.password === 'string' && body.password.length > 0) {
+      const salt = generateSalt();
+      entry.password_hash = await hashPassword(body.password, salt);
+      entry.password_salt = salt;
+    }
+  }
+  if ("max_clicks" in body) {
+    const mc = Number(body.max_clicks);
+    entry.max_clicks = (body.max_clicks != null && Number.isFinite(mc) && mc > 0) ? Math.floor(mc) : null;
+  }
+  if ("ios_url" in body) entry.ios_url = (body.ios_url && isValidUrl(body.ios_url)) ? body.ios_url : null;
+  if ("android_url" in body) entry.android_url = (body.android_url && isValidUrl(body.android_url)) ? body.android_url : null;
+  if ("og_title" in body) entry.og_title = body.og_title ? String(body.og_title).trim().slice(0, 200) : null;
+  if ("og_description" in body) entry.og_description = body.og_description ? String(body.og_description).trim().slice(0, 500) : null;
+  if ("og_image" in body) entry.og_image = (body.og_image && isValidUrl(body.og_image)) ? body.og_image : null;
 
   const kvOpts = entry.expires_at ? { expiration: Math.floor(new Date(entry.expires_at).getTime() / 1000) } : {};
   await env.KV.put(`link:${code}`, JSON.stringify(entry), kvOpts);
@@ -986,6 +1239,110 @@ async function handleAdminLinks(request, env) {
   return jsonResponse(entries);
 }
 
+// --------------- Analytics recording helper ----------------
+
+async function recordClick(entry, code, request, env) {
+  try {
+    const ua = request.headers.get("User-Agent") || "";
+    const { device, browser, browser_version, os } = parseUA(ua);
+    const country = request.headers.get("CF-IPCountry") || "unknown";
+    const city = (request.cf && request.cf.city) || null;
+    const region = (request.cf && request.cf.region) || null;
+
+    const refererHeader = request.headers.get("Referer") || null;
+    let referrer_domain = "direct";
+    if (refererHeader) {
+      try {
+        referrer_domain = new URL(refererHeader).hostname;
+      } catch {
+        referrer_domain = "direct";
+      }
+    }
+
+    const incomingUrl = new URL(request.url);
+    const utm_source = incomingUrl.searchParams.get("utm_source") || null;
+    const utm_medium = incomingUrl.searchParams.get("utm_medium") || null;
+    const utm_campaign = incomingUrl.searchParams.get("utm_campaign") || null;
+
+    const clientIp = request.headers.get("CF-Connecting-IP") || "";
+    const ip_hash = (await sha256Hex(clientIp)).slice(0, 16);
+
+    entry.clicks = (entry.clicks || 0) + 1;
+    entry.click_log = entry.click_log || [];
+    entry.click_log.push({
+      ts: new Date().toISOString(),
+      country, city, region, device, browser, browser_version, os,
+      referrer: refererHeader, referrer_domain,
+      utm_source, utm_medium, utm_campaign, ip_hash,
+    });
+    if (entry.click_log.length > MAX_CLICK_LOG) entry.click_log = entry.click_log.slice(entry.click_log.length - MAX_CLICK_LOG);
+
+    const kvOpts = entry.expires_at ? { expiration: Math.floor(new Date(entry.expires_at).getTime() / 1000) } : {};
+    await env.KV.put(`link:${code}`, JSON.stringify(entry), kvOpts);
+  } catch (err) {
+    console.error("[analytics]", err);
+  }
+}
+
+// --------------- Password-protected page -------------------
+
+function passwordFormPage(code, errorMsg = '') {
+  const errHtml = errorMsg
+    ? `<div style="color:#ff4444;font-family:monospace;font-size:13px;margin-bottom:12px;padding:10px 14px;border:1px solid #ff444433;border-radius:6px;background:#ff44440d">${errorMsg}</div>`
+    : '';
+  return htmlResponse(page(
+    'Protected link',
+    `<div style="max-width:380px;margin:0 auto;padding:40px 0">
+      <div style="font-size:36px;margin-bottom:16px">🔒</div>
+      <h1 style="font-family:monospace;font-size:22px;color:#e8e4df;margin-bottom:8px">Password required</h1>
+      <p style="font-family:monospace;font-size:13px;color:#666;margin-bottom:28px">This link is protected. Enter the password to continue.</p>
+      ${errHtml}
+      <form method="POST" action="/${encodeURIComponent(code)}" style="display:flex;flex-direction:column;gap:12px">
+        <input name="password" type="password" placeholder="Enter password" autofocus
+          style="background:#111;border:1px solid #2a2a2a;border-radius:7px;color:#e8e4df;font-family:monospace;font-size:14px;padding:11px 14px;outline:none"
+          onfocus="this.style.borderColor='#c8ff00'" onblur="this.style.borderColor='#2a2a2a'" />
+        <button type="submit"
+          style="background:#c8ff00;color:#000;border:none;border-radius:7px;font-family:monospace;font-size:14px;font-weight:700;padding:11px 0;cursor:pointer">
+          Unlock ✦
+        </button>
+      </form>
+    </div>`,
+  ), 200);
+}
+
+// --------------- OpenGraph preview page --------------------
+
+function ogPreviewPage(link, origin) {
+  const title = link.og_title || 'Shared link';
+  const desc = link.og_description || `Visit: ${link.original_url}`;
+  const img = link.og_image || '';
+  const url = `${origin}/${encodeURIComponent(link.code)}`;
+  const dest = link.original_url;
+
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  return htmlResponse(
+    `<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${esc(url)}">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(desc)}">
+${img ? `<meta property="og:image" content="${esc(img)}">` : ''}
+<meta name="twitter:card" content="${img ? 'summary_large_image' : 'summary'}">
+<meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="${esc(desc)}">
+${img ? `<meta name="twitter:image" content="${esc(img)}">` : ''}
+<title>${esc(title)}</title>
+<script>window.location.replace(${JSON.stringify(dest)});</script>
+</head><body style="background:#0a0a0a;color:#e8e4df;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh">
+<div style="text-align:center"><div style="font-size:40px;margin-bottom:16px">↗</div>
+<p style="color:#666;font-size:13px">Redirecting…<br><a href="${esc(dest)}" style="color:#c8ff00">${esc(dest.length > 60 ? dest.slice(0, 60) + '…' : dest)}</a></p></div>
+</body></html>`,
+    200,
+  );
+}
+
 // --------------- Redirect (no auth for end-users) -----------
 
 async function handleRedirect(code, request, env, ctx) {
@@ -998,64 +1355,85 @@ async function handleRedirect(code, request, env, ctx) {
 
   const entry = JSON.parse(raw);
 
-  if (entry.enabled === false) return disabledPage(request);
+  // Priority chain
   if (entry.expires_at && new Date(entry.expires_at) < new Date()) return expiredPage();
+  if (entry.max_clicks && (entry.clicks || 0) >= entry.max_clicks) return disabledPage(request);
+  if (entry.enabled === false) return disabledPage(request);
 
-  const analyticsTask = (async () => {
-    try {
-      const ua = request.headers.get("User-Agent") || "";
-      const { device, browser, browser_version, os } = parseUA(ua);
-      const country = request.headers.get("CF-IPCountry") || "unknown";
-      const city = (request.cf && request.cf.city) || null;
-      const region = (request.cf && request.cf.region) || null;
+  const ua = request.headers.get("User-Agent") || "";
 
-      const refererHeader = request.headers.get("Referer") || null;
-      let referrer_domain = "direct";
-      if (refererHeader) {
-        try {
-          referrer_domain = new URL(refererHeader).hostname;
-        } catch {
-          referrer_domain = "direct";
-        }
-      }
+  // Social bot → serve OG preview without counting analytics
+  const isSocialBot = /Twitterbot|facebookexternalhit|LinkedInBot|TelegramBot|Slackbot|WhatsApp|Discordbot/i.test(ua);
+  if (isSocialBot) {
+    const origin = new URL(request.url).origin;
+    return ogPreviewPage(entry, origin);
+  }
 
-      const incomingUrl = new URL(request.url);
-      const utm_source = incomingUrl.searchParams.get("utm_source") || null;
-      const utm_medium = incomingUrl.searchParams.get("utm_medium") || null;
-      const utm_campaign = incomingUrl.searchParams.get("utm_campaign") || null;
+  // Password check
+  if (entry.password_hash) {
+    return passwordFormPage(code);
+  }
 
-      const clientIp = request.headers.get("CF-Connecting-IP") || "";
-      const ip_hash = (await sha256Hex(clientIp)).slice(0, 16);
+  // Device routing
+  const { os } = parseUA(ua);
+  if (entry.ios_url && os === "iOS") {
+    if (ctx && ctx.waitUntil) ctx.waitUntil(recordClick(entry, code, request, env));
+    return Response.redirect(entry.ios_url, 302);
+  }
+  if (entry.android_url && os === "Android") {
+    if (ctx && ctx.waitUntil) ctx.waitUntil(recordClick(entry, code, request, env));
+    return Response.redirect(entry.android_url, 302);
+  }
 
-      entry.clicks = (entry.clicks || 0) + 1;
-      entry.click_log = entry.click_log || [];
-      entry.click_log.push({
-        ts: new Date().toISOString(),
-        country,
-        city,
-        region,
-        device,
-        browser,
-        browser_version,
-        os,
-        referrer: refererHeader,
-        referrer_domain,
-        utm_source,
-        utm_medium,
-        utm_campaign,
-        ip_hash,
-      });
-      if (entry.click_log.length > MAX_CLICK_LOG) entry.click_log = entry.click_log.slice(entry.click_log.length - MAX_CLICK_LOG);
-
-      const kvOpts = entry.expires_at ? { expiration: Math.floor(new Date(entry.expires_at).getTime() / 1000) } : {};
-      await env.KV.put(`link:${code}`, JSON.stringify(entry), kvOpts);
-    } catch (err) {
-      console.error("[analytics]", err);
-    }
-  })();
-
-  if (ctx && ctx.waitUntil) ctx.waitUntil(analyticsTask);
+  // Normal redirect
+  if (ctx && ctx.waitUntil) ctx.waitUntil(recordClick(entry, code, request, env));
   return Response.redirect(entry.original_url, 302);
+}
+
+// --------------- Password form submit -----------------------
+
+async function handlePasswordSubmit(code, request, env, ctx) {
+  const raw = await env.KV.get(`link:${code}`);
+  if (!raw)
+    return htmlResponse(
+      `<!DOCTYPE html><html><head><title>Not Found</title></head><body style="background:#0a0a0a;color:#555;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:monospace;text-align:center"><div><div style="font-size:48px;margin-bottom:16px">🔍</div><div style="font-size:24px;color:#888">Link not found.</div><a href="/" style="display:inline-block;margin-top:24px;color:#c8ff00;font-size:13px;text-decoration:none">← go back</a></div></body></html>`,
+      404,
+    );
+
+  const entry = JSON.parse(raw);
+
+  if (entry.expires_at && new Date(entry.expires_at) < new Date()) return expiredPage();
+  if (entry.max_clicks && (entry.clicks || 0) >= entry.max_clicks) return disabledPage(request);
+  if (entry.enabled === false) return disabledPage(request);
+
+  if (!entry.password_hash) {
+    // No password on this link — redirect normally
+    if (ctx && ctx.waitUntil) ctx.waitUntil(recordClick(entry, code, request, env));
+    return Response.redirect(entry.original_url, 302);
+  }
+
+  let submittedPassword = '';
+  try {
+    const text = await request.text();
+    submittedPassword = new URLSearchParams(text).get('password') || '';
+  } catch {
+    return passwordFormPage(code, 'Invalid form submission.');
+  }
+
+  if (!submittedPassword) return passwordFormPage(code, 'Password is required.');
+
+  const hash = await hashPassword(submittedPassword, entry.password_salt);
+  if (hash !== entry.password_hash) return passwordFormPage(code, 'Incorrect password. Try again.');
+
+  // Correct — apply device routing and redirect
+  const ua = request.headers.get("User-Agent") || "";
+  const { os } = parseUA(ua);
+  let destination = entry.original_url;
+  if (entry.ios_url && os === "iOS") destination = entry.ios_url;
+  if (entry.android_url && os === "Android") destination = entry.android_url;
+
+  if (ctx && ctx.waitUntil) ctx.waitUntil(recordClick(entry, code, request, env));
+  return Response.redirect(destination, 302);
 }
 
 // --------------- Main fetch handler -------------------------
@@ -1074,18 +1452,26 @@ export default {
     if (path === "/api/auth/logout" && method === "POST") return handleLogout(request, env);
     if (path === "/api/auth/me" && method === "GET") return handleMe(request, env);
     if (path === "/api/auth/google" && method === "POST") return handleGoogleAuth(request, env);
+    if (path === "/api/auth/github/init" && method === "GET") return handleGithubInit(request, env);
+    if (path === "/api/auth/github/callback" && method === "GET") return handleGithubCallback(request, env);
+    if (path === "/api/auth/discord/init" && method === "GET") return handleDiscordInit(request, env);
+    if (path === "/api/auth/discord/callback" && method === "GET") return handleDiscordCallback(request, env);
 
     // Links (user)
     if (path === "/api/shorten" && method === "POST") return handleShorten(request, env);
     if (path === "/api/links" && method === "GET") return handleListLinks(request, env);
 
-    const statsMatch = path.match(/^\/api\/stats\/([a-zA-Z0-9_-]{2,20})$/);
-    if (statsMatch && method === "GET") return handleGetStats(statsMatch[1], request, env);
+    const statsMatch = path.match(/^\/api\/stats\/([^/?#\s]{2,80})$/);
+    if (statsMatch && method === "GET") {
+      let statsCode; try { statsCode = decodeURIComponent(statsMatch[1]); } catch { statsCode = statsMatch[1]; }
+      return handleGetStats(statsCode, request, env);
+    }
 
-    const linksMatch = path.match(/^\/api\/links\/([a-zA-Z0-9_-]{2,20})$/);
+    const linksMatch = path.match(/^\/api\/links\/([^/?#\s]{2,80})$/);
     if (linksMatch) {
-      if (method === "PATCH") return handleUpdateLink(linksMatch[1], request, env);
-      if (method === "DELETE") return handleDeleteLink(linksMatch[1], request, env);
+      let linkCode; try { linkCode = decodeURIComponent(linksMatch[1]); } catch { linkCode = linksMatch[1]; }
+      if (method === "PATCH") return handleUpdateLink(linkCode, request, env);
+      if (method === "DELETE") return handleDeleteLink(linkCode, request, env);
     }
 
     // Admin
@@ -1093,15 +1479,19 @@ export default {
     if (path === "/api/admin/users" && method === "GET") return handleAdminUsers(request, env);
     if (path === "/api/admin/links" && method === "GET") return handleAdminLinks(request, env);
 
-    const adminUserMatch = path.match(/^\/api\/admin\/users\/([a-zA-Z0-9_-]{4,40})$/);
+    const adminUserMatch = path.match(/^\/api\/admin\/users\/([^/?#\s]{4,80})$/);
     if (adminUserMatch) {
       if (method === "PATCH") return handleAdminUpdateUser(adminUserMatch[1], request, env);
       if (method === "DELETE") return handleAdminDeleteUser(adminUserMatch[1], request, env);
     }
 
-    // Redirect
-    const redirectMatch = path.match(/^\/([a-zA-Z0-9_-]{2,20})$/);
-    if (redirectMatch && method === "GET") return handleRedirect(redirectMatch[1], request, env, ctx);
+    // Redirect / password submit (supports emoji slugs via percent-encoding)
+    const redirectMatch = path.match(/^\/([^/?#\s]{1,80})$/);
+    if (redirectMatch) {
+      let code; try { code = decodeURIComponent(redirectMatch[1]); } catch { code = redirectMatch[1]; }
+      if (method === "POST") return handlePasswordSubmit(code, request, env, ctx);
+      if (method === "GET") return handleRedirect(code, request, env, ctx);
+    }
 
     return jsonResponse({ error: "Not found." }, 404);
   },

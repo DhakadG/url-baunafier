@@ -1,14 +1,15 @@
-// URL Baunafier — v1.1.0 (2026-04-06)
+// URL Baunafier — v2.0.0 (2026-04-08)
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useLocation,
 } from 'react-router-dom';
+import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '2.0.0';
 
 // ─────────────────────────── API base ───────────────────────────────────────
 
-const API = import.meta.env.VITE_API_URL || 'https://go.losthusky.qzz.io';
+const API = import.meta.env.VITE_API_URL || 'https://go.baunafier.qzz.io';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 // ─────────────────────────── Design tokens ──────────────────────────────────
@@ -41,6 +42,9 @@ const Ic = {
   userX: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>,
   userCheck: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>,
   google: <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>,
+  github: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>,
+  discord: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.012.043.023.06a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>,
+  edit: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
 };
 
 function IconBtn({ icon, onClick, title, hoverColor, disabled: dis, style: extraStyle }) {
@@ -161,33 +165,53 @@ function ToastStack({ toasts }) {
 
 // ─────────────────────────── Logo ───────────────────────────────────────────
 
-const BRAND_NAMES = ['Baunafier', 'Snipper', 'Shortner', 'Chhota.link', 'Kattu', 'Snikr', 'URLess', 'Linkbender'];
+const LOGO_PATHS = [
+  'M307.23 136.69C323.071 134.858 335.809 145.922 333.96 162.482C333.177 169.528 327.579 177.021 323.543 182.767C319.411 188.539 315.205 194.255 310.923 199.913C298.392 216.742 298.892 224.302 315.332 238.709C325 247.179 335.252 255.319 345.151 263.534C376.427 289.495 407.496 316.334 432.897 348.256C447.62 366.734 455.227 390.384 451.878 413.983C448.761 436.271 436.844 456.38 418.791 469.82C400.649 483.36 378.917 488.448 356.601 485.18C344.213 483.341 332.338 478.96 321.717 472.315C307.263 463.081 295.723 450.673 284.122 438.284C251.463 403.4 226.327 364.149 197.954 326.063L188.156 313.014C193.883 304.11 199.53 295.15 205.096 286.142C220.531 290.589 225.677 301.417 234.599 313.721C259.141 347.573 283.282 381.476 311.606 412.351C329.607 431.97 348.212 453.14 377.889 447.806C389.623 445.778 400.017 439.039 406.657 429.159C415.697 415.879 416.857 398.76 410.458 384.107C398.908 357.665 338.624 307.109 314.658 286.727C301.693 275.696 287.145 264.769 276.708 251.263C270.738 243.538 266.225 234.304 264.404 224.684C259.386 198.201 281.061 179.147 294.615 159.205L288.687 164.008C286.489 161.425 283.556 158.477 281.193 155.971C288.526 146.372 295.016 139.261 307.23 136.69Z',
+  'M75.7067 0.476636C80.7815 -0.298199 90.0904 -0.0124201 95.203 0.513883C127.172 3.80611 148.145 23.8688 169.319 45.8571C205.719 83.6565 235.08 126.872 267.644 167.886C260.834 178.035 254.18 188.283 247.672 198.627C235.425 189.652 231.572 182.98 222.583 170.891C214.926 160.536 207.153 150.268 199.264 140.088C176.667 110.858 152.43 80.9397 125.527 55.5682C113.654 44.3706 99.6035 36.8425 82.8264 37.7036C71.1237 38.3426 60.1553 43.6071 52.3362 52.3377C39.322 66.829 36.6438 90.001 47.1816 106.168C61.6743 128.402 85.7762 149.873 105.413 167.457C119.256 180.335 134.587 192.363 148.952 204.683C158.457 212.836 170.091 221.945 177.884 231.671C183.158 238.146 187.049 245.63 189.321 253.667C197.418 283.302 174.56 301.317 160.731 325.213C162.823 322.822 164.143 320.61 167.169 320.016C170.417 320.638 172.603 324.821 174.694 327.75C169.112 336.937 159.262 346.939 148.338 349.132C142.494 350.306 136.424 349.042 131.531 345.637C126.271 342.053 122.708 336.786 121.688 330.476C121.013 326.373 121.314 322.171 122.57 318.205C125.937 307.589 139.933 290.541 146.646 280.746C158.979 262.745 150.722 255.322 136.449 243.254C106.126 217.612 74.6767 193.003 46.8972 164.528C36.108 153.469 24.4699 141.266 16.3985 128.085C10.3409 118.26 6.24505 107.355 4.33838 95.9718C0.632092 74.1175 5.90032 51.6926 18.9499 33.7747C33.012 14.4661 52.4701 4.17349 75.7067 0.476636Z',
+  'M109.97 241.283C118.556 247.843 128.963 257.322 137.101 264.571C110.621 294.677 83.635 324.723 57.8754 355.452C45.5591 370.147 35.4504 384.3 37.6316 404.381C39.0369 416.812 45.4181 428.144 55.3193 435.794C65.1875 443.537 77.9852 446.758 90.3812 445.24C98.7567 444.165 106.734 441.028 113.594 436.105C124.922 427.984 139.911 409.837 148.98 398.915C163.852 380.843 178.411 362.517 192.647 343.945C200.154 353.156 208.904 365.988 215.832 375.83L208.94 384.536C192.186 405.828 175.727 427.215 157.442 447.263C138.719 467.796 114.867 482.279 86.316 483.001C63.9095 483.439 42.2391 474.993 26.0392 459.506C9.63896 443.665 0.26549 421.91 0.0117702 399.108C-0.620171 361.394 24.3075 335.244 47.545 308.717C67.8237 285.755 88.6382 263.269 109.97 241.283Z',
+  'M369.609 4.78058C392.014 4.45329 413.642 12.9727 429.808 28.4906C446.305 44.1472 455.751 65.8218 455.987 88.5641C456.708 129.646 426.083 158.869 400.338 187.083C382.559 206.633 364.468 225.903 346.081 244.88C338.214 237.25 326.741 228.455 318.068 220.583C344.694 192.393 370.759 163.675 396.24 134.448C398.607 131.736 400.923 128.981 403.187 126.185C413.562 113.165 420.419 100.311 418.339 83.1332C416.886 70.924 410.624 59.799 400.937 52.2266C390.868 44.4528 378.14 40.9545 365.515 42.4886C357.423 43.5294 349.703 46.5226 343.025 51.2098C331.956 59.0591 313.739 80.3829 304.434 91.4343C291.46 106.843 276.416 124.23 264.112 140.18C256.788 129.881 248.087 118.795 240.457 108.602C246.258 102.097 252.318 94.2846 257.953 87.4629C267.8 75.3962 277.916 63.5529 288.301 51.9432C312.135 25.2102 331.952 6.93955 369.609 4.78058Z',
+  'M268.209 279.59C274.486 279.142 280.825 280.501 285.324 285.16C297.401 297.662 309.875 309.876 321.792 322.511C323.594 324.416 325.608 328.071 326.457 330.414C328.499 335.993 328.093 342.171 325.334 347.43C322.066 353.792 317.119 356.041 310.781 357.989C303.386 358.913 297.085 356.899 291.964 351.533C279.995 338.983 267.799 326.123 256.071 313.395C247.855 304.477 249.572 290.079 259.48 283.349C262.447 281.331 264.819 280.562 268.209 279.59Z',
+  'M148.485 130.108C165.032 128.077 173.043 143.867 183.815 153.724C190.341 159.696 196.832 166.883 202.913 173.237C208.768 179.354 210.611 189.494 206.662 197.023C203.387 203.59 198.971 205.791 192.448 208.034C175.972 210.682 166.97 193.953 156.185 184.187C150.269 177.609 142.736 171.699 137.231 164.844C125.934 150.776 132.366 134.75 148.485 130.108Z',
+];
+
+function BaunaMarkSVG({ height = 32, color = C.accent }) {
+  const w = Math.round(height * 456 / 487);
+  return (
+    <svg
+      width={w}
+      height={height}
+      viewBox="0 0 456 487"
+      fill="none"
+      aria-hidden="true"
+      className="bauna-mark"
+    >
+      {LOGO_PATHS.map((d, i) => (
+        <path
+          key={i}
+          d={d}
+          fill={color}
+          style={{
+            animation: `baunaPath .5s ${(i * 0.07).toFixed(2)}s cubic-bezier(.22,1,.36,1) both`,
+            transformBox: 'fill-box',
+            transformOrigin: 'center',
+          }}
+        />
+      ))}
+    </svg>
+  );
+}
 
 function Logo({ size = 'lg' }) {
-  const [idx, setIdx] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setIdx(i => (i + 1) % BRAND_NAMES.length), 2800);
-    return () => clearInterval(id);
-  }, []);
-
   const isLg = size === 'lg';
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: isLg ? 10 : 6, userSelect: 'none' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: isLg ? 12 : 7, userSelect: 'none' }}>
+      <BaunaMarkSVG height={isLg ? 54 : 27} />
       <span style={{
         fontFamily: C.space, fontWeight: 800,
-        fontSize: isLg ? 48 : 22,
-        color: C.text, letterSpacing: '-0.03em', lineHeight: 1,
-      }}>URL</span>
-      <div style={{ overflow: 'hidden', display: 'inline-block', lineHeight: 1 }}>
-        <span key={idx} style={{
-          fontFamily: C.display, fontStyle: 'italic',
-          fontSize: isLg ? 44 : 20,
-          color: C.accent, lineHeight: 1,
-          display: 'inline-block',
-          animation: 'nameSlideIn .45s cubic-bezier(.22,1,.36,1) both',
-        }}>{BRAND_NAMES[idx]}</span>
-      </div>
+        fontSize: isLg ? 40 : 20,
+        color: C.text, letterSpacing: '-0.02em', lineHeight: 1,
+        animation: isLg ? 'baunaText .6s .45s cubic-bezier(.22,1,.36,1) both' : undefined,
+      }}>Baunafier</span>
     </div>
   );
 }
@@ -319,17 +343,73 @@ function ExpiryPicker({ value, onChange }) {
 
 // ─────────────────────────── Analytics charts ───────────────────────────────
 
+// Minimal ISO 2-letter → ISO numeric 3-digit mapping for world map choropleth
+const ISO2_NUM = {
+  US:840,GB:826,DE:276,FR:250,IN:356,CN:156,JP:392,BR:76,CA:124,AU:36,
+  RU:643,KR:410,MX:484,ID:360,IT:380,ES:724,TR:792,SA:682,NL:528,CH:756,
+  AR:32,SE:752,PL:616,BE:56,TH:764,NO:578,AT:40,UA:804,DK:208,MY:458,
+  SG:702,FI:246,IL:376,HK:344,NZ:554,IE:372,GR:300,PT:620,CZ:203,RO:642,
+  ZA:710,NG:566,EG:818,PK:586,BD:50,VN:704,CO:170,CL:152,PE:604,PH:608,
+  HU:348,SK:703,BG:100,HR:191,LT:440,LV:428,EE:233,SI:705,RS:688,GH:288,
+  KE:404,MA:504,TZ:834,UG:800,ET:231,IQ:368,IR:364,AE:784,QA:634,KW:414,
+  DZ:12,LY:434,TN:788,SD:729,CM:120,CI:384,SN:686,MZ:508,ZW:716,ZM:894,
+};
+const NUM_ISO2 = Object.fromEntries(Object.entries(ISO2_NUM).map(([k,v])=>[v,k]));
+
+const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json';
+
+function WorldMap({ clicksByCountry }) {
+  const maxClicks = Math.max(...Object.values(clicksByCountry || {}), 1);
+  return (
+    <div style={{ background: C.card, borderRadius: 10, overflow: 'hidden', marginTop: 10, border: `1px solid ${C.border}` }}>
+      <ComposableMap projectionConfig={{ scale: 140 }} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        <Geographies geography={GEO_URL}>
+          {({ geographies }) =>
+            geographies.map(geo => {
+              const iso2 = NUM_ISO2[Number(geo.id)];
+              const count = (clicksByCountry || {})[iso2] || 0;
+              const intensity = count > 0 ? Math.min(1, 0.2 + (count / maxClicks) * 0.8) : 0;
+              const fill = count > 0 ? `rgba(200,255,0,${intensity.toFixed(2)})` : C.border;
+              return (
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  title={`${iso2 || 'Unknown'}: ${count} clicks`}
+                  fill={fill}
+                  stroke={C.bg}
+                  strokeWidth={0.5}
+                  style={{ default: { outline: 'none' }, hover: { fill: C.accent, outline: 'none', cursor: 'pointer' }, pressed: { outline: 'none' } }}
+                />
+              );
+            })
+          }
+        </Geographies>
+      </ComposableMap>
+    </div>
+  );
+}
+
 function HourlyBarChart({ data }) {
   const max = Math.max(...data, 1);
+  const [tip, setTip] = useState(null);
   return (
-    <div style={{ display: 'flex', gap: 3, height: 52, alignItems: 'flex-end', paddingTop: 4 }}>
-      {data.map((v, i) => (
-        <div key={i} title={`${i}:00 — ${v} click${v !== 1 ? 's' : ''}`} style={{
-          flex: 1, background: v ? C.accent : C.border, borderRadius: 2,
-          height: `${Math.max(3, (v / max) * 100)}%`,
-          opacity: v > 0 ? 1 : 0.25, transition: 'height .3s, opacity .3s',
-        }} />
-      ))}
+    <div style={{ position: 'relative' }}>
+      {tip !== null && (
+        <div style={{ position: 'absolute', top: -28, left: `${(tip / 24) * 100}%`, transform: 'translateX(-50%)', background: C.card, border: `1px solid ${C.border2}`, borderRadius: 5, padding: '2px 8px', fontFamily: C.mono, fontSize: 11, color: C.text, whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 10 }}>
+          {tip}:00 · {data[tip]}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 3, height: 52, alignItems: 'flex-end', paddingTop: 4 }}>
+        {data.map((v, i) => (
+          <div key={i} onMouseEnter={() => setTip(i)} onMouseLeave={() => setTip(null)}
+            style={{
+              flex: 1, background: tip === i ? C.accentDim : (v ? C.accent : C.border), borderRadius: 2,
+              height: `${Math.max(3, (v / max) * 100)}%`,
+              opacity: v > 0 ? 1 : 0.25, transition: 'height .3s, opacity .3s, background .1s',
+              cursor: 'default',
+            }} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -360,6 +440,8 @@ function BreakdownRow({ label, obj, total }) {
 function AnalyticsPanel({ code, token }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState('all');
+  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     if (!code) return;
@@ -374,24 +456,223 @@ function AnalyticsPanel({ code, token }) {
   if (!data?.analytics) return null;
 
   const { analytics, clicks } = data;
+
+  const rangeClicks = range === '24h' ? analytics.clicks_last_24h
+    : range === '7d' ? analytics.clicks_last_7d
+    : range === '30d' ? analytics.clicks_last_30d
+    : clicks;
+
+  const RANGES = [['24h', analytics.clicks_last_24h], ['7d', analytics.clicks_last_7d], ['30d', analytics.clicks_last_30d], ['all', clicks]];
+
+  const hasUTM = Object.keys(analytics.clicks_by_utm_source || {}).length > 0 ||
+    Object.keys(analytics.clicks_by_utm_medium || {}).length > 0 ||
+    Object.keys(analytics.clicks_by_utm_campaign || {}).length > 0;
+
   return (
     <div style={{ padding: '14px 0 6px' }}>
+      {/* Time range tabs + bot badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        {RANGES.map(([r, v]) => (
+          <button key={r} onClick={() => setRange(r)} style={{
+            background: range === r ? C.accent : 'none',
+            color: range === r ? '#000' : C.muted,
+            border: `1px solid ${range === r ? C.accent : C.border2}`,
+            borderRadius: 5, padding: '3px 10px', fontFamily: C.mono, fontSize: 11, cursor: 'pointer', transition: 'all .15s',
+          }}>{r} <span style={{ opacity: 0.7 }}>({v ?? 0})</span></button>
+        ))}
+        {analytics.bot_clicks > 0 && (
+          <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, background: `${C.border2}`, border: `1px solid ${C.border2}`, borderRadius: 5, padding: '3px 8px' }}>
+            🤖 {analytics.bot_clicks} bot
+          </span>
+        )}
+      </div>
+
+      {/* Hourly bar chart */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Clicks today by hour</div>
+        <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Clicks today by hour (UTC)</div>
         <HourlyBarChart data={analytics.clicks_today_by_hour || new Array(24).fill(0)} />
-        <div style={{ display: 'flex', gap: 20, marginTop: 8 }}>
-          {[['24h', analytics.clicks_last_24h], ['7d', analytics.clicks_last_7d], ['total', clicks]].map(([l, v]) => (
-            <span key={l} style={{ fontFamily: C.mono, fontSize: 12 }}>
-              <span style={{ color: C.muted }}>{l} </span><span style={{ color: C.accent }}>{v ?? 0}</span>
-            </span>
-          ))}
+      </div>
+
+      {/* Breakdown rows */}
+      <BreakdownRow label="Country" obj={analytics.clicks_by_country} total={rangeClicks} />
+
+      {/* World map toggle */}
+      <div style={{ marginBottom: 12 }}>
+        <button onClick={() => setShowMap(m => !m)} style={{
+          background: 'none', border: `1px solid ${C.border2}`, borderRadius: 5, color: C.muted,
+          fontFamily: C.mono, fontSize: 11, cursor: 'pointer', padding: '3px 10px', transition: 'color .15s, border-color .15s',
+        }}>{showMap ? '▲ hide map' : '▼ show world map'}</button>
+        {showMap && <WorldMap clicksByCountry={analytics.clicks_by_country} />}
+      </div>
+
+      <BreakdownRow label="Device" obj={analytics.clicks_by_device} total={rangeClicks} />
+      <BreakdownRow label="Browser" obj={analytics.clicks_by_browser} total={rangeClicks} />
+      <BreakdownRow label="OS" obj={analytics.clicks_by_os} total={rangeClicks} />
+      <BreakdownRow label="Referrer" obj={analytics.clicks_by_referrer} total={rangeClicks} />
+
+      {/* UTM section */}
+      {hasUTM && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
+          <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>UTM Tracking</div>
+          <BreakdownRow label="Source" obj={analytics.clicks_by_utm_source} total={rangeClicks} />
+          <BreakdownRow label="Medium" obj={analytics.clicks_by_utm_medium} total={rangeClicks} />
+          <BreakdownRow label="Campaign" obj={analytics.clicks_by_utm_campaign} total={rangeClicks} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────── Edit modal ─────────────────────────────────────
+
+function EditModal({ entry, token, onClose, onSave, toast }) {
+  const [originalUrl, setOriginalUrl] = useState(entry.original_url || '');
+  const [password, setPassword] = useState('');
+  const [clearPassword, setClearPassword] = useState(false);
+  const [maxClicks, setMaxClicks] = useState(entry.max_clicks || '');
+  const [iosUrl, setIosUrl] = useState(entry.ios_url || '');
+  const [androidUrl, setAndroidUrl] = useState(entry.android_url || '');
+  const [ogTitle, setOgTitle] = useState(entry.og_title || '');
+  const [ogDesc, setOgDesc] = useState(entry.og_description || '');
+  const [ogImage, setOgImage] = useState(entry.og_image || '');
+  const [saving, setSaving] = useState(false);
+  const [advOpen, setAdvOpen] = useState(false);
+  const [deviceOpen, setDeviceOpen] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const body = { original_url: originalUrl.trim() };
+      if (clearPassword) { body.password = null; }
+      else if (password) { body.password = password; }
+      if (maxClicks !== '') body.max_clicks = maxClicks === 0 ? null : Number(maxClicks);
+      if (iosUrl.trim() !== entry.ios_url) body.ios_url = iosUrl.trim() || null;
+      if (androidUrl.trim() !== entry.android_url) body.android_url = androidUrl.trim() || null;
+      body.og_title = ogTitle.trim() || null;
+      body.og_description = ogDesc.trim() || null;
+      body.og_image = ogImage.trim() || null;
+
+      const r = await fetch(`${API}/api/links/${entry.code}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) { toast(d.error || 'Save failed.', 'error'); return; }
+      toast('Link updated.', 'success');
+      onSave();
+      onClose();
+    } catch { toast('Network error.', 'error'); }
+    finally { setSaving(false); }
+  }
+
+  const iStyle = { ...inputStyle, width: '100%', marginBottom: 0 };
+  const labelStyle = { fontFamily: C.mono, fontSize: 11, color: C.muted, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' };
+  const sectionBtn = (open) => ({
+    background: 'none', border: `1px solid ${C.border2}`, borderRadius: 6, color: open ? C.accent : C.muted,
+    fontFamily: C.mono, fontSize: 11, cursor: 'pointer', padding: '5px 12px', width: '100%', textAlign: 'left',
+    transition: 'color .15s, border-color .15s', borderColor: open ? C.accent : C.border2,
+  });
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: C.card, border: `1px solid ${C.border2}`, borderRadius: 14, padding: 28, width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 22, color: C.text }}>Edit /{entry.code}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
+        </div>
+
+        {/* Original URL */}
+        <div>
+          <label style={labelStyle}>Destination URL</label>
+          <input value={originalUrl} onChange={e => setOriginalUrl(e.target.value)} style={iStyle}
+            onFocus={e => e.currentTarget.style.borderColor = C.accent}
+            onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+        </div>
+
+        {/* Advanced section */}
+        <div>
+          <button style={sectionBtn(advOpen)} onClick={() => setAdvOpen(o => !o)}>
+            {advOpen ? '▲' : '▼'} Advanced options
+          </button>
+          {advOpen && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Password {entry.password_hash ? '(currently set)' : ''}</label>
+                {entry.password_hash && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: C.mono, fontSize: 12, color: C.muted, marginBottom: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={clearPassword} onChange={e => setClearPassword(e.target.checked)} />
+                    Remove current password
+                  </label>
+                )}
+                {!clearPassword && (
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder={entry.password_hash ? 'Enter new password to replace…' : 'Set a password (optional)'}
+                    style={iStyle}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+                )}
+              </div>
+              <div>
+                <label style={labelStyle}>Max clicks (0 = unlimited)</label>
+                <input type="number" min="0" value={maxClicks} onChange={e => setMaxClicks(e.target.value)}
+                  placeholder="e.g. 100" style={iStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Device & OG section */}
+        <div>
+          <button style={sectionBtn(deviceOpen)} onClick={() => setDeviceOpen(o => !o)}>
+            {deviceOpen ? '▲' : '▼'} Device routing & social preview
+          </button>
+          {deviceOpen && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={labelStyle}>iOS URL (overrides destination for iPhone/iPad)</label>
+                <input value={iosUrl} onChange={e => setIosUrl(e.target.value)} placeholder="https://apps.apple.com/…" style={iStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+              </div>
+              <div>
+                <label style={labelStyle}>Android URL (overrides destination for Android)</label>
+                <input value={androidUrl} onChange={e => setAndroidUrl(e.target.value)} placeholder="https://play.google.com/…" style={iStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+              </div>
+              <div>
+                <label style={labelStyle}>OG Title (for social media previews)</label>
+                <input value={ogTitle} onChange={e => setOgTitle(e.target.value)} placeholder="e.g. Check out this link!" style={iStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+              </div>
+              <div>
+                <label style={labelStyle}>OG Description</label>
+                <input value={ogDesc} onChange={e => setOgDesc(e.target.value)} placeholder="Brief description for link previews" style={iStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+              </div>
+              <div>
+                <label style={labelStyle}>OG Image URL</label>
+                <input value={ogImage} onChange={e => setOgImage(e.target.value)} placeholder="https://example.com/image.jpg" style={iStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                  onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button onClick={save} disabled={saving} style={{ ...primaryBtn, flex: 1 }}>
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+          <button onClick={onClose} style={{ ...actionBtn, flex: '0 0 auto', padding: '10px 18px' }}>Cancel</button>
         </div>
       </div>
-      <BreakdownRow label="Country" obj={analytics.clicks_by_country} total={clicks} />
-      <BreakdownRow label="Device" obj={analytics.clicks_by_device} total={clicks} />
-      <BreakdownRow label="Browser" obj={analytics.clicks_by_browser} total={clicks} />
-      <BreakdownRow label="OS" obj={analytics.clicks_by_os} total={clicks} />
-      <BreakdownRow label="Referrer" obj={analytics.clicks_by_referrer} total={clicks} />
     </div>
   );
 }
@@ -402,6 +683,7 @@ function LinkRow({ entry, token, onRefresh, toast }) {
   const [expanded, setExpanded] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const shortUrl = entry.short_url || `https://go.losthusky.qzz.io/${entry.code}`;
@@ -441,6 +723,7 @@ function LinkRow({ entry, token, onRefresh, toast }) {
 
   return (
     <>
+      {editing && <EditModal entry={entry} token={token} onClose={() => setEditing(false)} onSave={onRefresh} toast={toast} />}
       <div style={{
         display: 'grid', gridTemplateColumns: '90px 1fr 64px 110px 80px 200px',
         gap: 12, padding: '12px 0', borderBottom: `1px solid ${C.border}`,
@@ -449,6 +732,8 @@ function LinkRow({ entry, token, onRefresh, toast }) {
         {/* Alias */}
         <div style={{ overflow: 'hidden' }}>
           <a href={shortUrl} target="_blank" rel="noreferrer" style={{ fontFamily: C.mono, color: C.accent, textDecoration: 'none', fontWeight: 600, fontSize: 13 }}>/{entry.code}</a>
+          {entry.password_hash && <span title="Password protected" style={{ marginLeft: 5, fontSize: 11, color: C.muted }}>🔒</span>}
+          {entry.max_clicks && <span title={`Max ${entry.max_clicks} clicks`} style={{ marginLeft: 3, fontSize: 11, color: C.muted }}>⚡{entry.max_clicks}</span>}
         </div>
         {/* Original URL */}
         <div style={{ overflow: 'hidden', fontFamily: C.mono, fontSize: 11, color: C.muted, whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} title={entry.original_url}>
@@ -470,6 +755,7 @@ function LinkRow({ entry, token, onRefresh, toast }) {
           <QRButton url={shortUrl} />
           <IconBtn icon={Ic.copy} onClick={copyLink} title="Copy link to clipboard" />
           <IconBtn icon={Ic.chart} onClick={() => setExpanded(e => !e)} title="View analytics" hoverColor={C.accent} style={{ background: expanded ? `${C.accent}22` : 'none', borderColor: expanded ? C.accent : C.border2, color: expanded ? C.accent : C.muted }} />
+          <IconBtn icon={Ic.edit} onClick={() => setEditing(true)} title="Edit link" />
           <ToggleSwitch enabled={entry.enabled} onToggle={toggleEnabled} disabled={toggling} />
           <IconBtn icon={Ic.trash} onClick={deleteLink} title="Delete link permanently" hoverColor={C.error} disabled={deleting} />
         </div>
@@ -569,6 +855,45 @@ function LandingPage() {
   );
 }
 
+// ─────────────────────────── OAuth popup hook ───────────────────────────────
+
+function useOAuthPopup(provider, onSuccess, onError) {
+  const [loading, setLoading] = useState(false);
+  function open() {
+    setLoading(true);
+    const popup = window.open(
+      `${API}/api/auth/${provider}/init`,
+      `${provider}_auth`,
+      'width=600,height=700,scrollbars=yes,resizable=yes',
+    );
+    if (!popup || popup.closed) {
+      setLoading(false);
+      onError('Popup was blocked. Please allow popups for this site and try again.');
+      return;
+    }
+    function onMessage(event) {
+      try { if (new URL(API).origin !== event.origin) return; } catch { return; }
+      if (event.data?.type === 'OAUTH_SUCCESS') {
+        cleanup();
+        onSuccess({ token: event.data.token, user: event.data.user });
+      } else if (event.data?.type === 'OAUTH_ERROR') {
+        cleanup();
+        onError(event.data.error || `${provider} sign-in failed.`);
+      }
+    }
+    function cleanup() {
+      window.removeEventListener('message', onMessage);
+      clearInterval(poll);
+      setLoading(false);
+    }
+    window.addEventListener('message', onMessage);
+    const poll = setInterval(() => {
+      try { if (popup.closed) cleanup(); } catch { cleanup(); }
+    }, 500);
+  }
+  return { loading, open };
+}
+
 // ─────────────────────────── Google Sign-In ────────────────────────────────
 
 function GoogleSignInButton({ onSuccess, onError }) {
@@ -599,7 +924,6 @@ function GoogleSignInButton({ onSuccess, onError }) {
           text: 'continue_with', shape: 'rectangular',
         });
       }
-      window.google.accounts.id.prompt();
     };
     if (window.google) { tryInit(); } else {
       const script = document.querySelector('script[src*="accounts.google.com/gsi"]');
@@ -609,19 +933,65 @@ function GoogleSignInButton({ onSuccess, onError }) {
 
   if (!GOOGLE_CLIENT_ID) return null;
 
+  return <div ref={containerRef} style={{ width: '100%', marginBottom: 8 }} />;
+}
+
+// ─────────────────────────── GitHub Sign-In ────────────────────────────────
+
+function GitHubSignInButton({ onSuccess, onError }) {
+  const { loading, open } = useOAuthPopup('github', onSuccess, onError);
+  const [hov, setHov] = useState(false);
   return (
-    <div style={{ marginTop: 4 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0',
-      }}>
-        <div style={{ flex: 1, height: 1, background: C.border2 }} />
-        <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, whiteSpace: 'nowrap' }}>or</span>
-        <div style={{ flex: 1, height: 1, background: C.border2 }} />
-      </div>
-      <div ref={containerRef} style={{ width: '100%' }} />
-    </div>
+    <button
+      type="button"
+      onClick={open}
+      disabled={loading}
+      title="Continue with GitHub"
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        background: hov ? '#21262d' : '#161b22',
+        border: `1px solid ${hov ? '#8b949e' : '#30363d'}`,
+        borderRadius: 8, color: '#e6edf3', fontFamily: C.mono, fontSize: 13, fontWeight: 600,
+        padding: '10px 16px', cursor: loading ? 'not-allowed' : 'pointer',
+        transition: 'border-color .15s, background .15s', opacity: loading ? 0.7 : 1,
+      }}
+    >
+      {Ic.github}
+      <span>{loading ? 'Connecting…' : 'GitHub'}</span>
+    </button>
   );
 }
+
+// ─────────────────────────── Discord Sign-In ───────────────────────────────
+
+function DiscordSignInButton({ onSuccess, onError }) {
+  const { loading, open } = useOAuthPopup('discord', onSuccess, onError);
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={open}
+      disabled={loading}
+      title="Continue with Discord"
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        background: hov ? '#5865f2' : '#404eed',
+        border: `1px solid ${hov ? '#5865f2' : '#404eed'}`,
+        borderRadius: 8, color: '#fff', fontFamily: C.mono, fontSize: 13, fontWeight: 600,
+        padding: '10px 16px', cursor: loading ? 'not-allowed' : 'pointer',
+        transition: 'border-color .15s, background .15s', opacity: loading ? 0.7 : 1,
+      }}
+    >
+      {Ic.discord}
+      <span>{loading ? 'Connecting…' : 'Discord'}</span>
+    </button>
+  );
+}
+
 
 // ─────────────────────────── Auth pages ─────────────────────────────────────
 
@@ -702,16 +1072,31 @@ function LoginPage({ toast }) {
 
   return (
     <AuthCard title="Welcome back.">
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+        <GitHubSignInButton
+          onSuccess={({ token, user }) => { login(token, user); navigate(from, { replace: true }); }}
+          onError={msg => setError(msg)}
+        />
+        <DiscordSignInButton
+          onSuccess={({ token, user }) => { login(token, user); navigate(from, { replace: true }); }}
+          onError={msg => setError(msg)}
+        />
+      </div>
+      <GoogleSignInButton
+        onSuccess={({ token, user }) => { login(token, user); navigate(from, { replace: true }); }}
+        onError={msg => setError(msg)}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
+        <div style={{ flex: 1, height: 1, background: C.border2 }} />
+        <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, whiteSpace: 'nowrap' }}>or</span>
+        <div style={{ flex: 1, height: 1, background: C.border2 }} />
+      </div>
       <form onSubmit={handleSubmit}>
         <InputField label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
         <InputField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
         {error && <div style={{ color: C.error, fontFamily: C.mono, fontSize: 13, marginBottom: 14 }}>{error}</div>}
         <button type="submit" disabled={loading} style={primaryBtn}>{loading ? 'Logging in…' : 'Login'}</button>
       </form>
-      <GoogleSignInButton
-        onSuccess={({ token, user }) => { login(token, user); navigate(from, { replace: true }); }}
-        onError={msg => setError(msg)}
-      />
       <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginTop: 18, textAlign: 'center' }}>
         No account? <Link to="/signup" style={{ color: C.accent }}>Sign up</Link>
       </p>
@@ -749,6 +1134,25 @@ function SignupPage({ toast }) {
 
   return (
     <AuthCard title="Create account.">
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+        <GitHubSignInButton
+          onSuccess={({ token, user }) => { login(token, user); navigate('/dashboard'); }}
+          onError={msg => setError(msg)}
+        />
+        <DiscordSignInButton
+          onSuccess={({ token, user }) => { login(token, user); navigate('/dashboard'); }}
+          onError={msg => setError(msg)}
+        />
+      </div>
+      <GoogleSignInButton
+        onSuccess={({ token, user }) => { login(token, user); navigate('/dashboard'); }}
+        onError={msg => setError(msg)}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
+        <div style={{ flex: 1, height: 1, background: C.border2 }} />
+        <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, whiteSpace: 'nowrap' }}>or</span>
+        <div style={{ flex: 1, height: 1, background: C.border2 }} />
+      </div>
       <form onSubmit={handleSubmit}>
         <InputField label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
         <InputField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
@@ -756,10 +1160,6 @@ function SignupPage({ toast }) {
         {error && <div style={{ color: C.error, fontFamily: C.mono, fontSize: 13, marginBottom: 14 }}>{error}</div>}
         <button type="submit" disabled={loading} style={primaryBtn}>{loading ? 'Creating…' : 'Create account'}</button>
       </form>
-      <GoogleSignInButton
-        onSuccess={({ token, user }) => { login(token, user); navigate('/dashboard'); }}
-        onError={msg => setError(msg)}
-      />
       <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginTop: 18, textAlign: 'center' }}>
         Have an account? <Link to="/login" style={{ color: C.accent }}>Login</Link>
       </p>
@@ -820,6 +1220,15 @@ function DashboardPage({ toast }) {
   const [url, setUrl] = useState('');
   const [alias, setAlias] = useState('');
   const [expiryMinutes, setExpiryMinutes] = useState(null);
+  const [password, setPassword] = useState('');
+  const [maxClicks, setMaxClicks] = useState('');
+  const [iosUrl, setIosUrl] = useState('');
+  const [androidUrl, setAndroidUrl] = useState('');
+  const [ogTitle, setOgTitle] = useState('');
+  const [ogDesc, setOgDesc] = useState('');
+  const [ogImage, setOgImage] = useState('');
+  const [advOpen, setAdvOpen] = useState(false);
+  const [deviceOpen, setDeviceOpen] = useState(false);
   const [shortening, setShortening] = useState(false);
   const [result, setResult] = useState(null);
   const [links, setLinks] = useState([]);
@@ -846,6 +1255,13 @@ function DashboardPage({ toast }) {
       const body = { url: url.trim() };
       if (alias.trim()) body.alias = alias.trim();
       if (expiryMinutes) body.expires_minutes = expiryMinutes;
+      if (password) body.password = password;
+      if (maxClicks) body.max_clicks = Number(maxClicks);
+      if (iosUrl.trim()) body.ios_url = iosUrl.trim();
+      if (androidUrl.trim()) body.android_url = androidUrl.trim();
+      if (ogTitle.trim()) body.og_title = ogTitle.trim();
+      if (ogDesc.trim()) body.og_description = ogDesc.trim();
+      if (ogImage.trim()) body.og_image = ogImage.trim();
       const r = await fetch(`${API}/api/shorten`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -856,6 +1272,9 @@ function DashboardPage({ toast }) {
       setResult(d);
       toast('Link created!', 'success');
       setUrl(''); setAlias(''); setExpiryMinutes(null);
+      setPassword(''); setMaxClicks('');
+      setIosUrl(''); setAndroidUrl('');
+      setOgTitle(''); setOgDesc(''); setOgImage('');
       fetchLinks();
     } catch { toast('Network error.', 'error'); }
     finally { setShortening(false); }
@@ -900,6 +1319,71 @@ function DashboardPage({ toast }) {
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Expiry</div>
               <ExpiryPicker value={expiryMinutes} onChange={setExpiryMinutes} />
+            </div>
+
+            {/* Advanced options collapsible */}
+            <div style={{ marginBottom: 12 }}>
+              <button type="button" onClick={() => setAdvOpen(o => !o)} style={{
+                background: 'none', border: `1px solid ${advOpen ? C.accent : C.border2}`, borderRadius: 6,
+                color: advOpen ? C.accent : C.muted, fontFamily: C.mono, fontSize: 11, cursor: 'pointer',
+                padding: '5px 14px', transition: 'color .15s, border-color .15s',
+              }}>
+                {advOpen ? '▲' : '▼'} Advanced options
+              </button>
+              {advOpen && (
+                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder="Password protection (optional)"
+                    style={{ ...inputStyle, flex: '1 1 200px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+                  <input type="number" min="1" value={maxClicks} onChange={e => setMaxClicks(e.target.value)}
+                    placeholder="Max clicks (optional)"
+                    style={{ ...inputStyle, flex: '0 1 160px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+                </div>
+              )}
+            </div>
+
+            {/* Device routing & OG preview collapsible */}
+            <div style={{ marginBottom: 18 }}>
+              <button type="button" onClick={() => setDeviceOpen(o => !o)} style={{
+                background: 'none', border: `1px solid ${deviceOpen ? C.accent : C.border2}`, borderRadius: 6,
+                color: deviceOpen ? C.accent : C.muted, fontFamily: C.mono, fontSize: 11, cursor: 'pointer',
+                padding: '5px 14px', transition: 'color .15s, border-color .15s',
+              }}>
+                {deviceOpen ? '▲' : '▼'} Device routing &amp; social preview
+              </button>
+              {deviceOpen && (
+                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  <input value={iosUrl} onChange={e => setIosUrl(e.target.value)}
+                    placeholder="iOS URL (e.g. apps.apple.com/…)"
+                    style={{ ...inputStyle, flex: '1 1 220px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+                  <input value={androidUrl} onChange={e => setAndroidUrl(e.target.value)}
+                    placeholder="Android URL (e.g. play.google.com/…)"
+                    style={{ ...inputStyle, flex: '1 1 220px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+                  <input value={ogTitle} onChange={e => setOgTitle(e.target.value)}
+                    placeholder="OG Title for social previews"
+                    style={{ ...inputStyle, flex: '1 1 220px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+                  <input value={ogDesc} onChange={e => setOgDesc(e.target.value)}
+                    placeholder="OG Description"
+                    style={{ ...inputStyle, flex: '1 1 220px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+                  <input value={ogImage} onChange={e => setOgImage(e.target.value)}
+                    placeholder="OG Image URL"
+                    style={{ ...inputStyle, flex: '1 1 220px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+                </div>
+              )}
             </div>
 
             <button type="submit" disabled={shortening} style={{
@@ -1187,7 +1671,7 @@ function PrivacyPage() {
         <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginBottom: 48 }}>Last updated: {new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
         {[
-          { title: '1. Who we are', body: 'URL Baunafier is a personal URL-shortening service operated by Dhakad Kumawat (dhakad.kumawat18@gmail.com) and accessible at snip.losthusky.qzz.io. By using the service you agree to this policy.' },
+          { title: '1. Who we are', body: 'URL Baunafier is a personal URL-shortening service operated by Dhakad Kumawat (dhakad.kumawat18@gmail.com) and accessible at baunafier.qzz.io. By using the service you agree to this policy.' },
           { title: '2. Information we collect', body: 'Account data: your email address and a salted PBKDF2 hash of your password (we never see your plaintext password). Link data: the original URL you submit and the alias/code we assign. Analytics: for every click on a shortened link we store the country, device type, browser family, operating system, and HTTP referrer. No cookies or fingerprints are used for tracking visitors; analytics are associated with links, not visitors.' },
           { title: '3. Google Sign-In', body: 'If you choose to sign in with Google, we receive your Google account email address and an opaque identifier from Google. We do not receive your Google password, contacts, or any other Google data. The credential is verified against Google\'s token endpoint and then treated identically to an email/password account.' },
           { title: '4. How we use your data', body: 'We use your email solely to identify your account and for service communications (e.g. password reset, if implemented). Analytics data is used only to power the per-link analytics dashboard visible to you and administrators. We do not sell, share, or transfer your data to any third party except as required by law.' },
@@ -1263,7 +1747,10 @@ function NotFoundPage() {
 
 const GLOBAL_CSS = `
 @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes nameSlideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes baunaPath { from { opacity: 0; transform: scale(0.55); } to { opacity: 1; transform: scale(1); } }
+@keyframes baunaText { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+.bauna-mark { transition: filter .3s ease; }
+.bauna-mark:hover { filter: drop-shadow(0 0 10px rgba(200,255,0,.4)); }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: ${C.bg}; color: ${C.text}; }
 ::-webkit-scrollbar { width: 6px; }

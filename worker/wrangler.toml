@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2024-09-23"
 
 routes = [
-  { pattern = "go.losthusky.qzz.io", custom_domain = true }
+  { pattern = "go.baunafier.qzz.io", custom_domain = true }
 ]
 
 # After running `npm run setup-kv`, paste the KV namespace IDs below.
@@ -18,3 +18,14 @@ preview_id = "abbb4c2a316d433b906b1b669abe9153"
 [vars]
 ADMIN_EMAIL = "dhakad.kumawat18@gmail.com"
 GOOGLE_CLIENT_ID = "1008988129190-on875i2de4ecnqkolbci6itucra1ih3g.apps.googleusercontent.com"
+
+# GitHub OAuth — get from github.com/settings/developers → OAuth Apps
+# Add secret: wrangler secret put GITHUB_CLIENT_SECRET
+GITHUB_CLIENT_ID = "Ov23liZsGEGHosEVyBZu"
+
+# Discord OAuth — get from discord.com/developers/applications
+# Add secret: wrangler secret put DISCORD_CLIENT_SECRET
+DISCORD_CLIENT_ID = "1490699042005450843"
+
+# Frontend origin for OAuth popup postMessage (set to your Pages URL)
+FRONTEND_URL = "https://baunafier.qzz.io"
