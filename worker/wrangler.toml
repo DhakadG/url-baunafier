@@ -1,0 +1,20 @@
+name = "url-shortener-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+routes = [
+  { pattern = "go.losthusky.qzz.io", custom_domain = true }
+]
+
+# After running `npm run setup-kv`, paste the KV namespace IDs below.
+# Run: npx wrangler kv namespace create KV
+# Run: npx wrangler kv namespace create KV --preview
+
+[[kv_namespaces]]
+binding = "KV"
+id = "9d4b4247000449ca9189319a3b0a34e8"
+preview_id = "abbb4c2a316d433b906b1b669abe9153"
+
+[vars]
+ADMIN_EMAIL = "dhakad.kumawat18@gmail.com"
+GOOGLE_CLIENT_ID = "1008988129190-on875i2de4ecnqkolbci6itucra1ih3g.apps.googleusercontent.com"

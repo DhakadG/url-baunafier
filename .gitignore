@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+build/
+.output/
+
+# Environment & secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Wrangler cache & dev state
+.wrangler/
+**/.wrangler/
+wrangler.toml.bak
+
+# Cloudflare dev
+*.local
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
