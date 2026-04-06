@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 
 // ── Utility: Base62 encoding ──
 const BASE62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -201,11 +201,11 @@ const S = {
     transition: "border-color 0.2s",
   },
   inputFocus: {
-    borderColor: "#c8ff00",
+    borderColor: "#A4F670",
   },
   btn: {
     padding: "14px 28px",
-    background: "#c8ff00",
+    background: "#A4F670",
     color: "#0a0a0a",
     border: "none",
     fontFamily: font,
@@ -258,7 +258,7 @@ const S = {
   },
   resultCard: {
     background: "#111",
-    border: "1px solid #c8ff00",
+    border: "1px solid #A4F670",
     padding: 24,
     marginBottom: 32,
     animation: "slideIn 0.3s ease-out",
@@ -273,7 +273,7 @@ const S = {
   resultUrl: {
     fontFamily: font,
     fontSize: 18,
-    color: "#c8ff00",
+    color: "#A4F670",
     wordBreak: "break-all",
     cursor: "pointer",
     display: "flex",
@@ -283,8 +283,8 @@ const S = {
   copyBtn: {
     padding: "6px 14px",
     background: "transparent",
-    border: "1px solid #c8ff00",
-    color: "#c8ff00",
+    border: "1px solid #A4F670",
+    color: "#A4F670",
     fontFamily: font,
     fontSize: 11,
     cursor: "pointer",
@@ -295,7 +295,7 @@ const S = {
     flexShrink: 0,
   },
   copyBtnDone: {
-    background: "#c8ff00",
+    background: "#A4F670",
     color: "#0a0a0a",
   },
   resultMeta: {
@@ -340,7 +340,7 @@ const S = {
     borderBottom: "1px solid #2a2a2a",
   },
   code: {
-    color: "#c8ff00",
+    color: "#A4F670",
     fontWeight: 600,
   },
   urlCell: {
@@ -361,7 +361,7 @@ const S = {
     textAlign: "center",
   },
   active: {
-    color: "#c8ff00",
+    color: "#A4F670",
     background: "rgba(200,255,0,0.08)",
     border: "1px solid rgba(200,255,0,0.2)",
   },
@@ -410,7 +410,7 @@ const S = {
     left: "50%",
     transform: "translateX(-50%)",
     padding: "10px 20px",
-    background: "#c8ff00",
+    background: "#A4F670",
     color: "#0a0a0a",
     fontFamily: font,
     fontSize: 12,
@@ -431,7 +431,7 @@ const S = {
     display: "inline-block",
     padding: "2px 8px",
     background: "rgba(200,255,0,0.1)",
-    color: "#c8ff00",
+    color: "#A4F670",
     fontSize: 11,
     fontWeight: 700,
     marginRight: 8,
@@ -561,15 +561,15 @@ export default function URLShortener() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::selection { background: #c8ff00; color: #0a0a0a; }
+        ::selection { background: #A4F670; color: #0a0a0a; }
         input::placeholder { color: #444; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
         button:hover:not(:disabled) { filter: brightness(1.1); }
         .del-btn:hover { color: #ff4444 !important; }
         .row-hover:hover { background: rgba(200,255,0,0.02); }
-        input:focus { border-color: #c8ff00 !important; }
-        .accent-line { height: 2px; background: linear-gradient(90deg, #c8ff00 0%, transparent 100%); margin-bottom: 48px; }
+        input:focus { border-color: #A4F670 !important; }
+        .accent-line { height: 2px; background: linear-gradient(90deg, #A4F670 0%, transparent 100%); margin-bottom: 48px; }
         @media (max-width: 600px) {
           .stats-grid { grid-template-columns: 1fr !important; }
           .table-row { grid-template-columns: 90px 1fr 40px 60px 32px !important; font-size: 11px !important; }

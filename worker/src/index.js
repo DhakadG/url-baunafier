@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Cloudflare Worker — URL Baunafier (ES Module, single file)
 // KV namespace binding: env.KV
 // Auth: PBKDF2 email+password, session tokens in KV
@@ -438,8 +438,8 @@ function disabledPage(request) {
       `@keyframes shrink{0%{font-size:28px;opacity:1;letter-spacing:.05em}70%{font-size:6px;opacity:.4;letter-spacing:-.05em}100%{font-size:0px;opacity:0;letter-spacing:0}}
 @keyframes pop{0%{transform:scale(.8);opacity:0}100%{transform:scale(1);opacity:1}}
 .wrap{text-align:center}
-.url-shrink{font-family:monospace;color:#c8ff00;animation:shrink 2.5s 0.5s forwards;white-space:nowrap;overflow:hidden;display:inline-block;margin-bottom:32px;min-height:36px}
-.big{font-size:52px;font-weight:bold;color:#c8ff00;margin-bottom:16px;animation:pop .5s 3.5s both}
+.url-shrink{font-family:monospace;color:#A4F670;animation:shrink 2.5s 0.5s forwards;white-space:nowrap;overflow:hidden;display:inline-block;margin-bottom:32px;min-height:36px}
+.big{font-size:52px;font-weight:bold;color:#A4F670;margin-bottom:16px;animation:pop .5s 3.5s both}
 .sub{font-size:17px;color:#6a8000;line-height:1.7;animation:pop .5s 3.7s both;opacity:0}
 .note{font-family:monospace;font-size:11px;color:#3a4a00;margin-top:16px;animation:pop .5s 4s both;opacity:0;font-style:italic}`,
       "#060800",
@@ -1323,9 +1323,9 @@ function passwordFormPage(code, errorMsg = "") {
       <form method="POST" action="/${encodeURIComponent(code)}" style="display:flex;flex-direction:column;gap:12px">
         <input name="password" type="password" placeholder="Enter password" autofocus
           style="background:#111;border:1px solid #2a2a2a;border-radius:7px;color:#e8e4df;font-family:monospace;font-size:14px;padding:11px 14px;outline:none"
-          onfocus="this.style.borderColor='#c8ff00'" onblur="this.style.borderColor='#2a2a2a'" />
+          onfocus="this.style.borderColor='#A4F670'" onblur="this.style.borderColor='#2a2a2a'" />
         <button type="submit"
-          style="background:#c8ff00;color:#000;border:none;border-radius:7px;font-family:monospace;font-size:14px;font-weight:700;padding:11px 0;cursor:pointer">
+          style="background:#A4F670;color:#000;border:none;border-radius:7px;font-family:monospace;font-size:14px;font-weight:700;padding:11px 0;cursor:pointer">
           Unlock ✦
         </button>
       </form>
@@ -1362,7 +1362,7 @@ ${img ? `<meta name="twitter:image" content="${esc(img)}">` : ""}
 <script>window.location.replace(${JSON.stringify(dest)});</script>
 </head><body style="background:#0a0a0a;color:#e8e4df;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh">
 <div style="text-align:center"><div style="font-size:40px;margin-bottom:16px">↗</div>
-<p style="color:#666;font-size:13px">Redirecting…<br><a href="${esc(dest)}" style="color:#c8ff00">${esc(dest.length > 60 ? dest.slice(0, 60) + "…" : dest)}</a></p></div>
+<p style="color:#666;font-size:13px">Redirecting…<br><a href="${esc(dest)}" style="color:#A4F670">${esc(dest.length > 60 ? dest.slice(0, 60) + "…" : dest)}</a></p></div>
 </body></html>`,
     200,
   );
@@ -1374,7 +1374,7 @@ async function handleRedirect(code, request, env, ctx) {
   const raw = await env.KV.get(`link:${code}`);
   if (!raw)
     return htmlResponse(
-      `<!DOCTYPE html><html><head><title>Not Found</title></head><body style="background:#0a0a0a;color:#555;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:monospace;text-align:center"><div><div style="font-size:48px;margin-bottom:16px">🔍</div><div style="font-size:24px;color:#888">Link not found.</div><a href="/" style="display:inline-block;margin-top:24px;color:#c8ff00;font-size:13px;text-decoration:none">← go back</a></div></body></html>`,
+      `<!DOCTYPE html><html><head><title>Not Found</title></head><body style="background:#0a0a0a;color:#555;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:monospace;text-align:center"><div><div style="font-size:48px;margin-bottom:16px">🔍</div><div style="font-size:24px;color:#888">Link not found.</div><a href="/" style="display:inline-block;margin-top:24px;color:#A4F670;font-size:13px;text-decoration:none">← go back</a></div></body></html>`,
       404,
     );
 
@@ -1421,7 +1421,7 @@ async function handlePasswordSubmit(code, request, env, ctx) {
   const raw = await env.KV.get(`link:${code}`);
   if (!raw)
     return htmlResponse(
-      `<!DOCTYPE html><html><head><title>Not Found</title></head><body style="background:#0a0a0a;color:#555;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:monospace;text-align:center"><div><div style="font-size:48px;margin-bottom:16px">🔍</div><div style="font-size:24px;color:#888">Link not found.</div><a href="/" style="display:inline-block;margin-top:24px;color:#c8ff00;font-size:13px;text-decoration:none">← go back</a></div></body></html>`,
+      `<!DOCTYPE html><html><head><title>Not Found</title></head><body style="background:#0a0a0a;color:#555;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:monospace;text-align:center"><div><div style="font-size:48px;margin-bottom:16px">🔍</div><div style="font-size:24px;color:#888">Link not found.</div><a href="/" style="display:inline-block;margin-top:24px;color:#A4F670;font-size:13px;text-decoration:none">← go back</a></div></body></html>`,
       404,
     );
 

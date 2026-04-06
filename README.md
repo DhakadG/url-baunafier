@@ -1,9 +1,9 @@
-<div align="center">
+﻿<div align="center">
 
 <!-- Logo -->
 <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 100 100">
   <rect width="100" height="100" rx="22" fill="#0a0a0a"/>
-  <g fill="none" stroke="#c8ff00" stroke-width="6.5" stroke-linecap="round">
+  <g fill="none" stroke="#A4F670" stroke-width="6.5" stroke-linecap="round">
     <path d="M38 54 a14 14 0 0 1 0-20l10-10 a14 14 0 0 1 20 20l-6 6"/>
     <path d="M62 46 a14 14 0 0 1 0 20l-10 10 a14 14 0 0 1-20-20l6-6"/>
   </g>
@@ -11,7 +11,7 @@
 
 # Baunafier
 
-**A fast, minimal URL shortener with click analytics, QR codes, expiry control, and social OAuth — deployed entirely on Cloudflare's edge.**
+**A fast, full-featured URL shortener with password protection, device routing, OG previews, world-map analytics, UTM breakdown, and social OAuth — deployed entirely on Cloudflare's edge.**
 
 [![Live](https://img.shields.io/badge/live-baunafier.qzz.io-c8ff00?style=flat-square&labelColor=0a0a0a)](https://baunafier.qzz.io)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?style=flat-square&logo=cloudflare&logoColor=fff&labelColor=0a0a0a)](https://workers.cloudflare.com)
@@ -25,7 +25,7 @@
 
 > **Prompt for AI image generation (Midjourney / DALL·E / Stable Diffusion):**
 >
-> *"Minimalist tech product banner, ultra dark background #0a0a0a, a glowing chartreuse-yellow (#c8ff00) chain-link icon centrally placed, the word BAUNAFIER in bold Space Grotesk font below it in off-white #e8e4df, subtitle 'shorten · track · share' in DM Mono monospace below that. Clean edge-to-edge dark gradient, subtle grid lines in #1a1a1a, no gradients on text, high contrast, flat design, 1600×900px, product launch style"*
+> *"Minimalist tech product banner, ultra dark background #0a0a0a, a glowing chartreuse-yellow (#A4F670) chain-link icon centrally placed, the word BAUNAFIER in bold Space Grotesk font below it in off-white #e8e4df, subtitle 'shorten · track · share' in DM Mono monospace below that. Clean edge-to-edge dark gradient, subtle grid lines in #1a1a1a, no gradients on text, high contrast, flat design, 1600×900px, product launch style"*
 
 ---
 
@@ -33,8 +33,16 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Instant shortening** | Create short links with optional custom aliases (2–20 chars) |
-| **Click analytics** | Country, device, browser, OS, and referrer breakdown per link |
+| **Instant shortening** | Create short links with optional custom aliases — including emoji slugs |
+| **Password protection** | Lock any link behind a password; served as a native HTML form (no JS needed) |
+| **Max-click limit** | Automatically disable a link after N clicks |
+| **Device routing** | Send iOS users to an App Store URL and Android users to a Play Store URL |
+| **Social / OG preview** | Custom OG title, description & image shown when a link is shared on social media |
+| **World map analytics** | Choropleth map of clicks by country using react-simple-maps |
+| **UTM breakdown** | Per-link source / medium / campaign analytics rows |
+| **Time-range tabs** | Filter analytics by 24 h, 7 d, 30 d, or all-time |
+| **Bot tracking** | Social-crawler clicks counted separately and badged in the analytics panel |
+| **Edit modal** | Edit destination URL, password, max clicks, device URLs, and OG fields in-place |
 | **QR codes** | One-click QR generation with live preview and download |
 | **Expiry control** | Set links to expire after minutes, hours, or days |
 | **Social OAuth** | Sign in with Google, GitHub, or Discord |
@@ -50,7 +58,7 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18 · Vite · react-router-dom v6 |
+| Frontend | React 18 · Vite · react-router-dom v7 · react-simple-maps |
 | Backend | Cloudflare Workers (plain JS, no framework) |
 | Storage | Cloudflare KV (sessions, users, links, analytics) |
 | Auth | PBKDF2-SHA-256 · KV sessions · Google / GitHub / Discord OAuth |
@@ -66,12 +74,12 @@ url-baunafier/
 │   ├── public/
 │   │   └── icon.svg          # Chain-link favicon (SVG)
 │   ├── src/
-│   │   └── App.jsx           # All components, pages, and routes (~1 400 lines)
+│   │   └── App.jsx           # All components, pages, and routes (~1 700 lines)
 │   ├── index.html
 │   └── vite.config.js
 ├── worker/
 │   ├── src/
-│   │   └── index.js          # Entire Cloudflare Worker (~1 300 lines)
+│   │   └── index.js          # Entire Cloudflare Worker (~1 400 lines)
 │   └── wrangler.toml
 └── README.md
 ```
@@ -211,11 +219,12 @@ All endpoints served from `https://go.baunafier.qzz.io`.
 | `GET` | `/api/auth/github/callback` | — | GitHub OAuth callback |
 | `GET` | `/api/auth/discord/init` | — | Begin Discord OAuth popup flow |
 | `GET` | `/api/auth/discord/callback` | — | Discord OAuth callback |
-| `POST` | `/api/shorten` | Bearer | Create short link |
+| `POST` | `/api/shorten` | Bearer | Create short link (password, max_clicks, ios_url, android_url, og_*) |
+| `POST` | `/:code` | — | Submit password for a password-protected link |
 | `GET` | `/api/links` | Bearer | List own links |
-| `PATCH` | `/api/links/:code` | Bearer | Update link (toggle, expiry) |
+| `PATCH` | `/api/links/:code` | Bearer | Update link (url, password, max_clicks, device urls, og, enabled, expiry) |
 | `DELETE` | `/api/links/:code` | Bearer | Delete a link |
-| `GET` | `/api/stats/:code` | Bearer | Click analytics for a link |
+| `GET` | `/api/stats/:code` | Bearer | Click analytics (country, device, browser, OS, referrer, UTM, bot_clicks, 24h/7d/30d) |
 | `GET` | `/api/admin/stats` | Admin | Site-wide stats |
 | `GET` | `/api/admin/users` | Admin | All users |
 | `GET` | `/api/admin/links` | Admin | All links |

@@ -1,4 +1,4 @@
-// URL Baunafier — v2.0.0 (2026-04-08)
+﻿// URL Baunafier — v2.0.0 (2026-04-08)
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useLocation,
@@ -19,7 +19,7 @@ const C = {
   card: '#111',
   border: '#1a1a1a',
   border2: '#2a2a2a',
-  accent: '#c8ff00',
+  accent: '#A4F670',
   accentDim: '#8eb000',
   error: '#ff4444',
   text: '#e8e4df',
