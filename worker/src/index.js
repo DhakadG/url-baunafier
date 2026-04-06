@@ -226,7 +226,10 @@ function buildAnalyticsSummary(entry) {
   const clicks_by_utm_campaign = {};
   const clicks_today_by_hour = new Array(24).fill(0);
 
-  let clicks_last_24h = 0, clicks_last_7d = 0, clicks_last_30d = 0, bot_clicks = 0;
+  let clicks_last_24h = 0,
+    clicks_last_7d = 0,
+    clicks_last_30d = 0,
+    bot_clicks = 0;
   const nowDate = new Date();
   const todayY = nowDate.getUTCFullYear(),
     todayM = nowDate.getUTCMonth(),
@@ -255,9 +258,18 @@ function buildAnalyticsSummary(entry) {
   }
 
   return {
-    clicks_by_country, clicks_by_device, clicks_by_browser, clicks_by_os, clicks_by_referrer,
-    clicks_by_utm_source, clicks_by_utm_medium, clicks_by_utm_campaign,
-    clicks_last_24h, clicks_last_7d, clicks_last_30d, bot_clicks,
+    clicks_by_country,
+    clicks_by_device,
+    clicks_by_browser,
+    clicks_by_os,
+    clicks_by_referrer,
+    clicks_by_utm_source,
+    clicks_by_utm_medium,
+    clicks_by_utm_campaign,
+    clicks_last_24h,
+    clicks_last_7d,
+    clicks_last_30d,
+    bot_clicks,
     clicks_today_by_hour,
   };
 }
@@ -956,7 +968,7 @@ async function handleShorten(request, env) {
     userId: session.userId,
   };
 
-  if (password && typeof password === 'string' && password.length > 0) {
+  if (password && typeof password === "string" && password.length > 0) {
     const salt = generateSalt();
     entry.password_hash = await hashPassword(password, salt);
     entry.password_salt = salt;
@@ -1053,7 +1065,7 @@ async function handleUpdateLink(code, request, env) {
     if (!body.password) {
       delete entry.password_hash;
       delete entry.password_salt;
-    } else if (typeof body.password === 'string' && body.password.length > 0) {
+    } else if (typeof body.password === "string" && body.password.length > 0) {
       const salt = generateSalt();
       entry.password_hash = await hashPassword(body.password, salt);
       entry.password_salt = salt;
@@ -1061,13 +1073,13 @@ async function handleUpdateLink(code, request, env) {
   }
   if ("max_clicks" in body) {
     const mc = Number(body.max_clicks);
-    entry.max_clicks = (body.max_clicks != null && Number.isFinite(mc) && mc > 0) ? Math.floor(mc) : null;
+    entry.max_clicks = body.max_clicks != null && Number.isFinite(mc) && mc > 0 ? Math.floor(mc) : null;
   }
-  if ("ios_url" in body) entry.ios_url = (body.ios_url && isValidUrl(body.ios_url)) ? body.ios_url : null;
-  if ("android_url" in body) entry.android_url = (body.android_url && isValidUrl(body.android_url)) ? body.android_url : null;
+  if ("ios_url" in body) entry.ios_url = body.ios_url && isValidUrl(body.ios_url) ? body.ios_url : null;
+  if ("android_url" in body) entry.android_url = body.android_url && isValidUrl(body.android_url) ? body.android_url : null;
   if ("og_title" in body) entry.og_title = body.og_title ? String(body.og_title).trim().slice(0, 200) : null;
   if ("og_description" in body) entry.og_description = body.og_description ? String(body.og_description).trim().slice(0, 500) : null;
-  if ("og_image" in body) entry.og_image = (body.og_image && isValidUrl(body.og_image)) ? body.og_image : null;
+  if ("og_image" in body) entry.og_image = body.og_image && isValidUrl(body.og_image) ? body.og_image : null;
 
   const kvOpts = entry.expires_at ? { expiration: Math.floor(new Date(entry.expires_at).getTime() / 1000) } : {};
   await env.KV.put(`link:${code}`, JSON.stringify(entry), kvOpts);
@@ -1271,9 +1283,19 @@ async function recordClick(entry, code, request, env) {
     entry.click_log = entry.click_log || [];
     entry.click_log.push({
       ts: new Date().toISOString(),
-      country, city, region, device, browser, browser_version, os,
-      referrer: refererHeader, referrer_domain,
-      utm_source, utm_medium, utm_campaign, ip_hash,
+      country,
+      city,
+      region,
+      device,
+      browser,
+      browser_version,
+      os,
+      referrer: refererHeader,
+      referrer_domain,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      ip_hash,
     });
     if (entry.click_log.length > MAX_CLICK_LOG) entry.click_log = entry.click_log.slice(entry.click_log.length - MAX_CLICK_LOG);
 
@@ -1286,13 +1308,14 @@ async function recordClick(entry, code, request, env) {
 
 // --------------- Password-protected page -------------------
 
-function passwordFormPage(code, errorMsg = '') {
+function passwordFormPage(code, errorMsg = "") {
   const errHtml = errorMsg
     ? `<div style="color:#ff4444;font-family:monospace;font-size:13px;margin-bottom:12px;padding:10px 14px;border:1px solid #ff444433;border-radius:6px;background:#ff44440d">${errorMsg}</div>`
-    : '';
-  return htmlResponse(page(
-    'Protected link',
-    `<div style="max-width:380px;margin:0 auto;padding:40px 0">
+    : "";
+  return htmlResponse(
+    page(
+      "Protected link",
+      `<div style="max-width:380px;margin:0 auto;padding:40px 0">
       <div style="font-size:36px;margin-bottom:16px">🔒</div>
       <h1 style="font-family:monospace;font-size:22px;color:#e8e4df;margin-bottom:8px">Password required</h1>
       <p style="font-family:monospace;font-size:13px;color:#666;margin-bottom:28px">This link is protected. Enter the password to continue.</p>
@@ -1307,19 +1330,21 @@ function passwordFormPage(code, errorMsg = '') {
         </button>
       </form>
     </div>`,
-  ), 200);
+    ),
+    200,
+  );
 }
 
 // --------------- OpenGraph preview page --------------------
 
 function ogPreviewPage(link, origin) {
-  const title = link.og_title || 'Shared link';
+  const title = link.og_title || "Shared link";
   const desc = link.og_description || `Visit: ${link.original_url}`;
-  const img = link.og_image || '';
+  const img = link.og_image || "";
   const url = `${origin}/${encodeURIComponent(link.code)}`;
   const dest = link.original_url;
 
-  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   return htmlResponse(
     `<!DOCTYPE html><html><head>
@@ -1328,16 +1353,16 @@ function ogPreviewPage(link, origin) {
 <meta property="og:url" content="${esc(url)}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
-${img ? `<meta property="og:image" content="${esc(img)}">` : ''}
-<meta name="twitter:card" content="${img ? 'summary_large_image' : 'summary'}">
+${img ? `<meta property="og:image" content="${esc(img)}">` : ""}
+<meta name="twitter:card" content="${img ? "summary_large_image" : "summary"}">
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(desc)}">
-${img ? `<meta name="twitter:image" content="${esc(img)}">` : ''}
+${img ? `<meta name="twitter:image" content="${esc(img)}">` : ""}
 <title>${esc(title)}</title>
 <script>window.location.replace(${JSON.stringify(dest)});</script>
 </head><body style="background:#0a0a0a;color:#e8e4df;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh">
 <div style="text-align:center"><div style="font-size:40px;margin-bottom:16px">↗</div>
-<p style="color:#666;font-size:13px">Redirecting…<br><a href="${esc(dest)}" style="color:#c8ff00">${esc(dest.length > 60 ? dest.slice(0, 60) + '…' : dest)}</a></p></div>
+<p style="color:#666;font-size:13px">Redirecting…<br><a href="${esc(dest)}" style="color:#c8ff00">${esc(dest.length > 60 ? dest.slice(0, 60) + "…" : dest)}</a></p></div>
 </body></html>`,
     200,
   );
@@ -1412,18 +1437,18 @@ async function handlePasswordSubmit(code, request, env, ctx) {
     return Response.redirect(entry.original_url, 302);
   }
 
-  let submittedPassword = '';
+  let submittedPassword = "";
   try {
     const text = await request.text();
-    submittedPassword = new URLSearchParams(text).get('password') || '';
+    submittedPassword = new URLSearchParams(text).get("password") || "";
   } catch {
-    return passwordFormPage(code, 'Invalid form submission.');
+    return passwordFormPage(code, "Invalid form submission.");
   }
 
-  if (!submittedPassword) return passwordFormPage(code, 'Password is required.');
+  if (!submittedPassword) return passwordFormPage(code, "Password is required.");
 
   const hash = await hashPassword(submittedPassword, entry.password_salt);
-  if (hash !== entry.password_hash) return passwordFormPage(code, 'Incorrect password. Try again.');
+  if (hash !== entry.password_hash) return passwordFormPage(code, "Incorrect password. Try again.");
 
   // Correct — apply device routing and redirect
   const ua = request.headers.get("User-Agent") || "";
@@ -1463,13 +1488,23 @@ export default {
 
     const statsMatch = path.match(/^\/api\/stats\/([^/?#\s]{2,80})$/);
     if (statsMatch && method === "GET") {
-      let statsCode; try { statsCode = decodeURIComponent(statsMatch[1]); } catch { statsCode = statsMatch[1]; }
+      let statsCode;
+      try {
+        statsCode = decodeURIComponent(statsMatch[1]);
+      } catch {
+        statsCode = statsMatch[1];
+      }
       return handleGetStats(statsCode, request, env);
     }
 
     const linksMatch = path.match(/^\/api\/links\/([^/?#\s]{2,80})$/);
     if (linksMatch) {
-      let linkCode; try { linkCode = decodeURIComponent(linksMatch[1]); } catch { linkCode = linksMatch[1]; }
+      let linkCode;
+      try {
+        linkCode = decodeURIComponent(linksMatch[1]);
+      } catch {
+        linkCode = linksMatch[1];
+      }
       if (method === "PATCH") return handleUpdateLink(linkCode, request, env);
       if (method === "DELETE") return handleDeleteLink(linkCode, request, env);
     }
@@ -1488,7 +1523,12 @@ export default {
     // Redirect / password submit (supports emoji slugs via percent-encoding)
     const redirectMatch = path.match(/^\/([^/?#\s]{1,80})$/);
     if (redirectMatch) {
-      let code; try { code = decodeURIComponent(redirectMatch[1]); } catch { code = redirectMatch[1]; }
+      let code;
+      try {
+        code = decodeURIComponent(redirectMatch[1]);
+      } catch {
+        code = redirectMatch[1];
+      }
       if (method === "POST") return handlePasswordSubmit(code, request, env, ctx);
       if (method === "GET") return handleRedirect(code, request, env, ctx);
     }

@@ -686,7 +686,7 @@ function LinkRow({ entry, token, onRefresh, toast }) {
   const [editing, setEditing] = useState(false);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const shortUrl = entry.short_url || `https://go.losthusky.qzz.io/${entry.code}`;
+  const shortUrl = entry.short_url || `https://go.baunafier.qzz.io/${entry.code}`;
 
   async function toggleEnabled() {
     setToggling(true);
