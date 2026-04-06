@@ -1,7 +1,10 @@
+// URL Baunafier — v1.1.0 (2026-04-06)
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useLocation,
 } from 'react-router-dom';
+
+const APP_VERSION = '1.1.0';
 
 // ─────────────────────────── API base ───────────────────────────────────────
 
