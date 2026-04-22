@@ -359,10 +359,11 @@ export function QRCodeModal({ url: initialUrl, onClose }) {
                 <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6 }}>
                   {PRESETS.map(p => (
                     <button key={p.name} type="button" onClick={() => applyPreset(p)} aria-label={`Apply ${p.name} preset`}
-                      style={{ ...outlineBtn, padding:'5px 12px', background:`linear-gradient(135deg, ${p.dark} 50%, ${p.light} 50%)`, border:`1px solid ${C.border2}`, color:C.text, fontSize:10 }}
+                      style={{ ...outlineBtn, padding:0, display:'flex', alignItems:'stretch', overflow:'hidden', border:`1px solid ${C.border2}` }}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor=C.accent;}}
                       onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border2;}}>
-                      {p.name}
+                      <span style={{ display:'block', width:20, background:`linear-gradient(135deg, ${p.dark} 50%, ${p.light} 50%)`, flexShrink:0 }} />
+                      <span style={{ padding:'5px 9px', fontFamily:C.mono, fontSize:10, color:C.text }}>{p.name}</span>
                     </button>
                   ))}
                 </div>

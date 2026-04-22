@@ -21,7 +21,15 @@ html, body { background: ${C.bg}; color: ${C.text}; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
 input::placeholder { color: ${C.muted}; }
-input:-webkit-autofill { -webkit-box-shadow: 0 0 0 100px ${C.bg} inset; -webkit-text-fill-color: ${C.text}; }
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 200px ${C.bg} inset !important;
+  -webkit-text-fill-color: ${C.text} !important;
+  caret-color: ${C.text};
+  transition: background-color 5000s ease-in-out 0s !important;
+}
 a { color: inherit; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (max-width: 700px) { .link-row-grid { grid-template-columns: 80px 1fr 54px 80px !important; } .link-row-grid .col-created, .link-row-grid .col-actions { display: none; } }
