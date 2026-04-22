@@ -11,7 +11,7 @@
 
 # Baunafier
 
-**A fast, full-featured URL shortener with password protection, device routing, OG previews, world-map analytics, UTM breakdown, and social OAuth — deployed entirely on Cloudflare's edge.**
+**A fast, full-featured URL shortener and QR redirect manager with password protection, device routing, OG previews, world-map analytics, UTM breakdown, and social OAuth — deployed entirely on Cloudflare's edge.**
 
 [![Live](https://img.shields.io/badge/live-baunafier.qzz.io-c8ff00?style=flat-square&labelColor=0a0a0a)](https://baunafier.qzz.io)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-f38020?style=flat-square&logo=cloudflare&logoColor=fff&labelColor=0a0a0a)](https://workers.cloudflare.com)
@@ -21,15 +21,9 @@
 
 ---
 
-## Banner Image Prompt
-
-> **Prompt for AI image generation (Midjourney / DALL·E / Stable Diffusion):**
->
-> *"Minimalist tech product banner, ultra dark background #0a0a0a, a glowing chartreuse-yellow (#A4F670) chain-link icon centrally placed, the word BAUNAFIER in bold Space Grotesk font below it in off-white #e8e4df, subtitle 'shorten · track · share' in DM Mono monospace below that. Clean edge-to-edge dark gradient, subtle grid lines in #1a1a1a, no gradients on text, high contrast, flat design, 1600×900px, product launch style"*
-
----
-
 ## Features
+
+### Short Links
 
 | Feature | Description |
 |---------|-------------|
@@ -45,11 +39,29 @@
 | **Edit modal** | Edit destination URL, password, max clicks, device URLs, and OG fields in-place |
 | **QR codes** | One-click QR generation with live preview and download |
 | **Expiry control** | Set links to expire after minutes, hours, or days |
-| **Social OAuth** | Sign in with Google, GitHub, or Discord |
-| **Email auth** | Traditional email + password with PBKDF2-SHA-256 hashing |
-| **Admin dashboard** | User management, role control, global link overview |
 | **Link toggles** | Enable/disable any link instantly without deleting it |
 | **10 expiry pages** | Unique, animated "link disabled" art pages per link |
+
+### QR Redirect Manager
+
+| Feature | Description |
+|---------|-------------|
+| **Named QR redirects** | Create permanent `/qr/:slug` redirects with a human-readable name and notes |
+| **Full CRUD** | Create, edit, toggle, and delete QR entries from the dashboard |
+| **Per-slug analytics** | Scan count, country map, device/browser breakdown, time-range filters |
+| **Active / Paused** | Pause any QR redirect — shows a branded dark-themed paused page |
+| **404 page** | Custom dark-themed not-found page for unknown slugs |
+| **Admin panel tab** | Admins can view, toggle, and delete all QR redirects across all users |
+| **Seed script** | `worker/seed-qr.js` pre-populates slugs (e.g. ARTH ATELIER F/W 26 fabric collection) |
+| **No new infra** | Reuses the existing KV namespace with a `qr:` key prefix |
+
+### Platform
+
+| Feature | Description |
+|---------|-------------|
+| **Social OAuth** | Sign in with Google, GitHub, or Discord |
+| **Email auth** | Traditional email + password with PBKDF2-SHA-256 hashing |
+| **Admin dashboard** | User management, role control, global link + QR overview |
 | **Edge-native** | Zero cold starts — runs on Cloudflare Workers + KV globally |
 
 ---
@@ -72,15 +84,59 @@
 url-baunafier/
 ├── frontend/
 │   ├── public/
-│   │   └── icon.svg          # Chain-link favicon (SVG)
-│   ├── src/
-│   │   └── App.jsx           # All components, pages, and routes (~1 700 lines)
-│   ├── index.html
-│   └── vite.config.js
+│   │   └── _redirects              # SPA fallback for Cloudflare Pages
+│   └── src/
+│       ├── components/
+│       │   ├── AnalyticsPanel.jsx   # Reusable analytics panel (links + QR)
+│       │   ├── AuthCard.jsx
+│       │   ├── EditModal.jsx        # Short link edit modal
+│       │   ├── ExpiryPicker.jsx
+│       │   ├── LinkRow.jsx
+│       │   ├── Logo.jsx
+│       │   ├── OAuthButtons.jsx
+│       │   ├── QRButton.jsx
+│       │   ├── QRCodeRow.jsx        # QR redirect row with analytics + edit
+│       │   ├── QREditModal.jsx      # QR redirect edit modal
+│       │   ├── ToastStack.jsx
+│       │   └── ui/
+│       │       ├── IconBtn.jsx
+│       │       ├── Spinner.jsx
+│       │       └── ToggleSwitch.jsx
+│       ├── constants/
+│       ├── context/
+│       ├── hooks/
+│       ├── layouts/
+│       ├── pages/
+│       │   ├── Admin.jsx            # Admin panel (stats, users, links, QR tab)
+│       │   ├── Dashboard.jsx        # User dashboard (links tab + QR tab)
+│       │   ├── LandingPage.jsx
+│       │   ├── Login.jsx
+│       │   ├── NotFound.jsx
+│       │   ├── Privacy.jsx
+│       │   ├── Signup.jsx
+│       │   └── Terms.jsx
+│       ├── routes/
+│       └── services/
+│           └── api.js               # All API calls (links + QR endpoints)
 ├── worker/
-│   ├── src/
-│   │   └── index.js          # Entire Cloudflare Worker (~1 400 lines)
-│   └── wrangler.toml
+│   ├── seed-qr.js                   # Seed script for QR slugs
+│   └── src/
+│       ├── index.js                 # Router — short links + /qr/:slug redirects
+│       ├── config/
+│       ├── middleware/
+│       ├── routes/
+│       │   ├── admin.js
+│       │   ├── auth.js
+│       │   ├── links.js
+│       │   ├── qr.js                # QR redirect CRUD + stats + admin list
+│       │   └── redirect.js
+│       ├── services/
+│       │   └── analyticsService.js  # Shared analytics (links + QR, keyPrefix param)
+│       └── utils/
+│           ├── encoder.js
+│           ├── pages.js             # HTML error/expiry pages incl. qrNotFoundPage
+│           ├── response.js
+│           └── validation.js
 └── README.md
 ```
 
@@ -142,8 +198,22 @@ npm run build      # → dist/
 ### 4. Deploy frontend
 
 ```bash
-# Cloudflare Pages
+# Cloudflare Pages — must use --branch prod-v1 for the custom domain
 wrangler pages deploy dist --project-name url-shortener-frontend --branch prod-v1
+```
+
+> **Important:** The Cloudflare Pages project uses `prod-v1` as its production branch. Deploying to `main` or `production` creates a preview URL only — the custom domain `baunafier.qzz.io` will not update.
+
+### 5. Seed QR redirects (optional)
+
+To pre-populate QR slugs (e.g. the ARTH ATELIER fabric collection), run from the repo root after deploying the worker:
+
+```bash
+# Optional: set an owner ID for seeded entries
+export SEED_OWNER_ID=your-user-id
+
+node worker/seed-qr.js
+# Append --env production to target the production KV namespace
 ```
 
 ---
@@ -230,6 +300,18 @@ All endpoints served from `https://go.baunafier.qzz.io`.
 | `GET` | `/api/admin/links` | Admin | All links |
 | `PATCH` | `/api/admin/users/:id` | Admin | Update user role / status |
 | `DELETE` | `/api/admin/users/:id` | Admin | Delete user and their links |
+
+### QR Redirect API
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/qr/:slug` | — | Redirect to destination URL (or branded 404 / paused page) |
+| `GET` | `/api/qr` | Bearer | List own QR redirects |
+| `POST` | `/api/qr` | Bearer | Create QR redirect `{ slug, name, url, notes }` |
+| `PATCH` | `/api/qr/:slug` | Bearer | Update QR redirect (url, name, notes, active) |
+| `DELETE` | `/api/qr/:slug` | Bearer | Delete a QR redirect |
+| `GET` | `/api/qr/stats/:slug` | Bearer | Scan analytics (country, device, browser, OS, referrer, time-ranges) |
+| `GET` | `/api/admin/qr` | Admin | All QR redirects across all users (includes owner email) |
 
 ---
 
