@@ -348,3 +348,46 @@ export function oauthErrorPage(error, frontendUrl) {
 <script>(function(){try{if(window.opener){window.opener.postMessage(${data},${JSON.stringify(origin)});setTimeout(function(){window.close();},300);}else{window.location.href=${JSON.stringify((frontendUrl || "") + "/login")};}}catch(e){document.querySelector('p').textContent='Auth error: '+${JSON.stringify(String(error))};;}})();<\/script>
 </body></html>`;
 }
+
+export function qrNotFoundPage(slug) {
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return htmlResponse(
+    page(
+      "QR Code Not Found",
+      `<div class="wrap">
+  <div class="qr-icon">▦</div>
+  <div class="big">QR code not found.</div>
+  <p class="sub">The code <span class="slug">/${esc(slug)}</span> doesn't exist or has been removed.</p>
+</div>`,
+      `@keyframes fadeIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+.wrap{text-align:center;animation:fadeIn .4s ease both}
+.qr-icon{font-size:80px;display:block;margin-bottom:20px;color:#2a2a2a;letter-spacing:-.05em;line-height:1}
+.big{font-size:40px;font-weight:bold;color:#555;margin-bottom:14px;font-family:monospace}
+.sub{font-size:15px;color:#444;line-height:1.7;font-family:monospace}
+.slug{color:#A4F670;background:#A4F67011;padding:2px 8px;border-radius:4px}`,
+      "#0a0a0a",
+    ),
+    404,
+  );
+}
+
+export function qrPausedPage(slug, name) {
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return htmlResponse(
+    page(
+      "QR Code Paused",
+      `<div class="wrap">
+  <div class="qr-icon">⏸</div>
+  <div class="big">${esc(name || slug)}</div>
+  <p class="sub">This QR code is temporarily paused and not redirecting right now.<br>Check back soon.</p>
+</div>`,
+      `@keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}
+.wrap{text-align:center}
+.qr-icon{font-size:72px;display:block;margin-bottom:20px;animation:pulse 2s ease-in-out infinite}
+.big{font-size:34px;font-weight:bold;color:#e8e4df;margin-bottom:14px;font-family:monospace}
+.sub{font-size:15px;color:#555;line-height:1.8;font-family:monospace}`,
+      "#0a0a0a",
+    ),
+    200,
+  );
+}

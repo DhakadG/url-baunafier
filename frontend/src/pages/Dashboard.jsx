@@ -1,14 +1,20 @@
 import { useState, useCallback, useEffect } from 'react';
 import { C, inputStyle, actionBtn, primaryBtn } from '../constants/theme';
-import { API } from '../services/api';
+import { API, listQRCodes, createQRCode } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { NavBar } from '../layouts/MainLayout';
 import { QRButton } from '../components/QRButton';
 import { ExpiryPicker } from '../components/ExpiryPicker';
 import { LinkRow } from '../components/LinkRow';
+import { QRCodeRow } from '../components/QRCodeRow';
 
 export function DashboardPage({ toast }) {
   const { token } = useAuth();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState('links');
+
+  // ── Links state ────────────────────────────────────────────────────────────
   const [url, setUrl] = useState('');
   const [alias, setAlias] = useState('');
   const [expiryMinutes, setExpiryMinutes] = useState(null);
@@ -27,6 +33,16 @@ export function DashboardPage({ toast }) {
   const [loadingLinks, setLoadingLinks] = useState(true);
   const [search, setSearch] = useState('');
 
+  // ── QR state ───────────────────────────────────────────────────────────────
+  const [qrSlug, setQrSlug] = useState('');
+  const [qrName, setQrName] = useState('');
+  const [qrUrl, setQrUrl] = useState('');
+  const [qrNotes, setQrNotes] = useState('');
+  const [qrCreating, setQrCreating] = useState(false);
+  const [qrCodes, setQrCodes] = useState([]);
+  const [loadingQR, setLoadingQR] = useState(false);
+  const [qrSearch, setQrSearch] = useState('');
+
   const fetchLinks = useCallback(async () => {
     setLoadingLinks(true);
     try {
@@ -37,7 +53,17 @@ export function DashboardPage({ toast }) {
     finally { setLoadingLinks(false); }
   }, [token]);
 
+  const fetchQRCodes = useCallback(async () => {
+    setLoadingQR(true);
+    try {
+      const d = await listQRCodes(token);
+      setQrCodes(Array.isArray(d) ? d : []);
+    } catch { setQrCodes([]); }
+    finally { setLoadingQR(false); }
+  }, [token]);
+
   useEffect(() => { fetchLinks(); }, [fetchLinks]);
+  useEffect(() => { if (activeTab === 'qr') fetchQRCodes(); }, [activeTab, fetchQRCodes]);
 
   async function handleShorten(e) {
     e.preventDefault();
@@ -72,6 +98,27 @@ export function DashboardPage({ toast }) {
     finally { setShortening(false); }
   }
 
+  async function handleCreateQR(e) {
+    e.preventDefault();
+    if (!qrSlug.trim()) { toast('Slug is required.', 'error'); return; }
+    if (!qrName.trim()) { toast('Name is required.', 'error'); return; }
+    if (!qrUrl.trim()) { toast('Destination URL is required.', 'error'); return; }
+    setQrCreating(true);
+    try {
+      const res = await createQRCode(token, {
+        slug: qrSlug.trim(),
+        name: qrName.trim(),
+        url: qrUrl.trim(),
+        notes: qrNotes.trim(),
+      });
+      if (!res.ok) { toast(res.data?.error || 'Could not create QR code.', 'error'); return; }
+      toast('QR redirect created!', 'success');
+      setQrSlug(''); setQrName(''); setQrUrl(''); setQrNotes('');
+      fetchQRCodes();
+    } catch { toast('Network error.', 'error'); }
+    finally { setQrCreating(false); }
+  }
+
   function copyResult() {
     if (result?.short_url) navigator.clipboard.writeText(result.short_url)
       .then(() => toast('Copied!', 'success'))
@@ -82,14 +129,39 @@ export function DashboardPage({ toast }) {
     !search || l.code.includes(search) || l.original_url.includes(search)
   );
 
+  const filteredQR = qrCodes.filter(q =>
+    !qrSearch || q.slug.includes(qrSearch) || q.name.toLowerCase().includes(qrSearch.toLowerCase()) || q.url.includes(qrSearch)
+  );
+
+  const tabStyle = (active) => ({
+    background: active ? C.accent : 'none',
+    color: active ? '#000' : C.muted,
+    border: `1px solid ${active ? C.accent : C.border2}`,
+    borderRadius: 7, padding: '6px 20px', fontFamily: C.mono, fontSize: 12,
+    cursor: 'pointer', fontWeight: active ? 700 : 400, transition: 'all .15s',
+  });
+
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
       <NavBar toast={toast} />
       <main style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 24px' }}>
 
-        {/* Shorten form */}
-        <section style={{ marginBottom: 48 }}>
-          <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 28, color: C.text, marginBottom: 24 }}>Shorten a URL</h2>
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 36 }}>
+          <button style={tabStyle(activeTab === 'links')} onClick={() => setActiveTab('links')}>
+            ✦ Short Links
+          </button>
+          <button style={tabStyle(activeTab === 'qr')} onClick={() => setActiveTab('qr')}>
+            ▦ QR Redirects
+          </button>
+        </div>
+
+        {/* ── LINKS TAB ────────────────────────────────────────────────────── */}
+        {activeTab === 'links' && (
+          <>
+            {/* Shorten form */}
+            <section style={{ marginBottom: 48 }}>
+              <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 28, color: C.text, marginBottom: 24 }}>Shorten a URL</h2>
           <form onSubmit={handleShorten}>
             <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
               <input
@@ -238,6 +310,110 @@ export function DashboardPage({ toast }) {
             ))
           )}
         </section>
+          </>
+        )}
+
+        {/* ── QR REDIRECTS TAB ─────────────────────────────────────────────── */}
+        {activeTab === 'qr' && (
+          <>
+            {/* Create QR form */}
+            <section style={{ marginBottom: 48 }}>
+              <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 28, color: C.text, marginBottom: 8 }}>
+                Create a QR Redirect
+              </h2>
+              <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginBottom: 24 }}>
+                Create a named redirect behind a QR code. Scan live at{' '}
+                <span style={{ color: C.accent }}>go.baunafier.qzz.io/qr/&lt;slug&gt;</span>
+              </p>
+              <form onSubmit={handleCreateQR}>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                  <input
+                    value={qrSlug}
+                    onChange={e => setQrSlug(e.target.value)}
+                    placeholder="slug (e.g. organic-wool)"
+                    style={{ ...inputStyle, flex: '0 1 200px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2}
+                  />
+                  <input
+                    value={qrName}
+                    onChange={e => setQrName(e.target.value)}
+                    placeholder="Name (e.g. Organic Wool)"
+                    style={{ ...inputStyle, flex: '0 1 220px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                  <input
+                    value={qrUrl}
+                    onChange={e => setQrUrl(e.target.value)}
+                    placeholder="https://destination-url.com"
+                    style={{ ...inputStyle, flex: '1 1 320px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2}
+                  />
+                  <input
+                    value={qrNotes}
+                    onChange={e => setQrNotes(e.target.value)}
+                    placeholder="Notes (optional)"
+                    style={{ ...inputStyle, flex: '1 1 220px' }}
+                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                    onBlur={e => e.currentTarget.style.borderColor = C.border2}
+                  />
+                </div>
+                <button type="submit" disabled={qrCreating} style={{ ...primaryBtn, width: 'auto', padding: '10px 28px' }}>
+                  {qrCreating ? 'Creating…' : 'Create QR redirect ▦'}
+                </button>
+              </form>
+            </section>
+
+            {/* QR codes table */}
+            <section>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
+                <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 24, color: C.text }}>Your QR codes</h2>
+                <input
+                  value={qrSearch}
+                  onChange={e => setQrSearch(e.target.value)}
+                  placeholder="Filter QR codes…"
+                  style={{ ...inputStyle, width: 200, fontSize: 12 }}
+                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                  onBlur={e => e.currentTarget.style.borderColor = C.border2}
+                />
+              </div>
+
+              {/* Header row */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '120px 1fr 64px 100px 80px 200px',
+                gap: 12, padding: '8px 0', borderBottom: `1px solid ${C.border2}`,
+                fontFamily: C.mono, fontSize: 10, color: C.muted,
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+              }}>
+                <span>Slug</span>
+                <span>Name / Destination</span>
+                <span style={{ textAlign: 'center' }}>Scans</span>
+                <span>Status</span>
+                <span>Created</span>
+                <span style={{ textAlign: 'right' }}>Actions</span>
+              </div>
+
+              {loadingQR ? (
+                <div style={{ padding: '32px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>
+                  Loading QR codes…
+                </div>
+              ) : filteredQR.length === 0 ? (
+                <div style={{ padding: '32px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>
+                  {qrSearch ? 'No QR codes match your filter.' : 'No QR redirects yet. Create one above!'}
+                </div>
+              ) : (
+                filteredQR.map(entry => (
+                  <QRCodeRow key={entry.slug} entry={entry} token={token} onRefresh={fetchQRCodes} toast={toast} />
+                ))
+              )}
+            </section>
+          </>
+        )}
+
       </main>
     </div>
   );

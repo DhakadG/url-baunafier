@@ -114,7 +114,7 @@ export function buildAnalyticsSummary(entry) {
   };
 }
 
-export async function recordClick(entry, code, request, env) {
+export async function recordClick(entry, code, request, env, keyPrefix = "link:") {
   try {
     const ua = request.headers.get("User-Agent") || "";
     const { device, browser, browser_version, os } = parseUA(ua);
@@ -161,7 +161,7 @@ export async function recordClick(entry, code, request, env) {
     if (entry.click_log.length > MAX_CLICK_LOG) entry.click_log = entry.click_log.slice(entry.click_log.length - MAX_CLICK_LOG);
 
     const kvOpts = entry.expires_at ? { expiration: Math.floor(new Date(entry.expires_at).getTime() / 1000) } : {};
-    await env.KV.put(`link:${code}`, JSON.stringify(entry), kvOpts);
+    await env.KV.put(`${keyPrefix}${code}`, JSON.stringify(entry), kvOpts);
   } catch (err) {
     console.error("[analytics]", err);
   }

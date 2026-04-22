@@ -85,7 +85,7 @@ function BreakdownRow({ label, obj, total }) {
   );
 }
 
-export function AnalyticsPanel({ code, token }) {
+export function AnalyticsPanel({ code, token, statsEndpoint }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState('all');
@@ -94,7 +94,8 @@ export function AnalyticsPanel({ code, token }) {
   useEffect(() => {
     if (!code) return;
     setLoading(true);
-    fetch(`${API}/api/stats/${code}`, { headers: { Authorization: `Bearer ${token}` } })
+    const endpoint = statsEndpoint ? `${API}${statsEndpoint}` : `${API}/api/stats/${code}`;
+    fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
@@ -103,14 +104,15 @@ export function AnalyticsPanel({ code, token }) {
   if (loading) return <div style={{ padding: '12px 0', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>Loading analytics…</div>;
   if (!data?.analytics) return null;
 
-  const { analytics, clicks } = data;
+  const { analytics, clicks, total_scans } = data;
+  const totalClicks = total_scans ?? clicks ?? 0;
 
   const rangeClicks = range === '24h' ? analytics.clicks_last_24h
     : range === '7d' ? analytics.clicks_last_7d
     : range === '30d' ? analytics.clicks_last_30d
-    : clicks;
+    : totalClicks;
 
-  const RANGES = [['24h', analytics.clicks_last_24h], ['7d', analytics.clicks_last_7d], ['30d', analytics.clicks_last_30d], ['all', clicks]];
+  const RANGES = [['24h', analytics.clicks_last_24h], ['7d', analytics.clicks_last_7d], ['30d', analytics.clicks_last_30d], ['all', totalClicks]];
 
   const hasUTM = Object.keys(analytics.clicks_by_utm_source || {}).length > 0 ||
     Object.keys(analytics.clicks_by_utm_medium || {}).length > 0 ||

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { C } from '../constants/theme';
 import { Ic } from '../constants/icons';
-import { API } from '../services/api';
+import { API, adminListQRCodes, updateQRCode, deleteQRCode } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { NavBar } from '../layouts/MainLayout';
 import { IconBtn } from '../components/ui/IconBtn';
@@ -14,6 +14,7 @@ export function AdminPage({ toast }) {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [links, setLinks] = useState([]);
+  const [qrCodes, setQrCodes] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const fetchStats = useCallback(async () => {
@@ -38,10 +39,20 @@ export function AdminPage({ toast }) {
     setLoading(false);
   }, [token]);
 
+  const fetchQRCodes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await adminListQRCodes(token);
+      setQrCodes(Array.isArray(d) ? d : []);
+    } catch { setQrCodes([]); }
+    finally { setLoading(false); }
+  }, [token]);
+
   useEffect(() => {
     fetchStats();
     if (tab === 'users') fetchUsers();
     if (tab === 'links') fetchLinks();
+    if (tab === 'qr') fetchQRCodes();
   }, [tab]); // eslint-disable-line
 
   async function toggleUser(user) {
@@ -88,6 +99,21 @@ export function AdminPage({ toast }) {
     fetchLinks();
   }
 
+  async function adminToggleQR(qr) {
+    const res = await updateQRCode(token, qr.slug, { active: !qr.active });
+    if (!res.ok) { toast(res.data?.error || 'Failed to toggle.', 'error'); return; }
+    toast(`QR code ${qr.active ? 'paused' : 'activated'}.`, 'success');
+    fetchQRCodes();
+  }
+
+  async function adminDeleteQR(qr) {
+    if (!confirm(`Delete QR code /${qr.slug}?`)) return;
+    const res = await deleteQRCode(token, qr.slug);
+    if (!res.ok) { toast(res.data?.error || 'Failed to delete.', 'error'); return; }
+    toast('QR code deleted.', 'success');
+    fetchQRCodes();
+  }
+
   const tabStyle = active => ({
     background: active ? C.accent : 'none',
     color: active ? '#000' : C.muted,
@@ -115,8 +141,10 @@ export function AdminPage({ toast }) {
         )}
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 28 }}>
-          {['stats', 'users', 'links'].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>{t}</button>
+          {['stats', 'users', 'links', 'qr'].map(t => (
+            <button key={t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>
+              {t === 'qr' ? '▦ QR' : t}
+            </button>
           ))}
         </div>
 
@@ -193,6 +221,70 @@ export function AdminPage({ toast }) {
                     <QRButton url={l.short_url} />
                     <ToggleSwitch enabled={l.enabled} onToggle={() => adminToggleLink(l)} />
                     <IconBtn icon={Ic.trash} onClick={() => adminDeleteLink(l)} title="Delete link permanently" hoverColor={C.error} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── QR REDIRECTS TAB ─────────────────────────────────────────────── */}
+        {tab === 'qr' && (
+          <div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '140px 1fr 180px 60px 100px 80px 90px',
+              gap: 10, padding: '8px 0', borderBottom: `1px solid ${C.border2}`,
+              fontFamily: C.mono, fontSize: 10, color: C.muted,
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+            }}>
+              <span>Slug</span>
+              <span>Destination</span>
+              <span>Created by</span>
+              <span style={{ textAlign: 'center' }}>Scans</span>
+              <span>Status</span>
+              <span>Date</span>
+              <span style={{ textAlign: 'right' }}>Actions</span>
+            </div>
+            {loading ? (
+              <div style={{ padding: 32, textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>Loading…</div>
+            ) : qrCodes.length === 0 ? (
+              <div style={{ padding: 32, textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>No QR redirects yet.</div>
+            ) : qrCodes.map(q => {
+              const qrUrl = `https://go.baunafier.qzz.io/qr/${q.slug}`;
+              const statusColor = q.active ? C.accent : C.error;
+              const statusLabel = q.active ? 'Active' : 'Paused';
+              return (
+                <div key={q.slug} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '140px 1fr 180px 60px 100px 80px 90px',
+                  gap: 10, padding: '14px 0', borderBottom: `1px solid ${C.border}`,
+                  alignItems: 'center', fontSize: 13,
+                }}>
+                  <div>
+                    <a href={qrUrl} target="_blank" rel="noreferrer" style={{ fontFamily: C.mono, color: C.accent, textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                      /qr/{q.slug}
+                    </a>
+                  </div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontFamily: C.mono, fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.name}</div>
+                    <div style={{ fontFamily: C.mono, fontSize: 10, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }} title={q.url}>{q.url}</div>
+                  </div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontFamily: C.mono, fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={q.owner_email}>{q.owner_email}</div>
+                  </div>
+                  <span style={{ fontFamily: C.mono, color: C.accent, textAlign: 'center', fontWeight: 600 }}>{q.total_scans ?? 0}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
+                    <span style={{ fontFamily: C.mono, fontSize: 11, color: statusColor }}>{statusLabel}</span>
+                  </div>
+                  <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted }}>
+                    {new Date(q.created).toLocaleDateString()}
+                  </span>
+                  <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <QRButton url={qrUrl} />
+                    <ToggleSwitch enabled={q.active} onToggle={() => adminToggleQR(q)} />
+                    <IconBtn icon={Ic.trash} onClick={() => adminDeleteQR(q)} title="Delete QR redirect permanently" hoverColor={C.error} />
                   </div>
                 </div>
               );
