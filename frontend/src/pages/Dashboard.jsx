@@ -7,6 +7,9 @@ import { QRButton } from '../components/QRButton';
 import { ExpiryPicker } from '../components/ExpiryPicker';
 import { LinkRow } from '../components/LinkRow';
 import { QRCodeRow } from '../components/QRCodeRow';
+import { QRBulkPanel } from '../components/QRBulkPanel';
+import { QRBatch } from '../components/QRBatch';
+import { QRDecodePanel } from '../components/QRDecodePanel';
 
 export function DashboardPage({ toast }) {
   const { token } = useAuth();
@@ -42,6 +45,7 @@ export function DashboardPage({ toast }) {
   const [qrCodes, setQrCodes] = useState([]);
   const [loadingQR, setLoadingQR] = useState(false);
   const [qrSearch, setQrSearch] = useState('');
+  const [selectedQRSlugs, setSelectedQRSlugs] = useState(new Set());
 
   const fetchLinks = useCallback(async () => {
     setLoadingLinks(true);
@@ -395,11 +399,20 @@ export function DashboardPage({ toast }) {
 
               {/* Header row */}
               <div style={{
-                display: 'grid', gridTemplateColumns: '120px 1fr 64px 100px 80px 200px',
+                display: 'grid', gridTemplateColumns: '20px 120px 1fr 64px 100px 80px 200px',
                 gap: 12, padding: '8px 0', borderBottom: `1px solid ${C.border2}`,
                 fontFamily: C.mono, fontSize: 10, color: C.muted,
                 textTransform: 'uppercase', letterSpacing: '0.08em',
               }}>
+                <input type="checkbox"
+                  checked={filteredQR.length > 0 && filteredQR.every(q => selectedQRSlugs.has(q.slug))}
+                  onChange={e => {
+                    if (e.target.checked) setSelectedQRSlugs(new Set(filteredQR.map(q => q.slug)));
+                    else setSelectedQRSlugs(new Set());
+                  }}
+                  aria-label="Select all QR codes"
+                  style={{ accentColor: C.accent, width: 14, height: 14, cursor: 'pointer' }}
+                />
                 <span>Slug</span>
                 <span>Name / Destination</span>
                 <span style={{ textAlign: 'center' }}>Scans</span>
@@ -418,10 +431,81 @@ export function DashboardPage({ toast }) {
                 </div>
               ) : (
                 filteredQR.map(entry => (
-                  <QRCodeRow key={entry.slug} entry={entry} token={token} onRefresh={fetchQRCodes} toast={toast} />
+                  <QRCodeRow
+                    key={entry.slug} entry={entry} token={token} onRefresh={fetchQRCodes} toast={toast}
+                    selected={selectedQRSlugs.has(entry.slug)}
+                    onSelect={(slug, checked) => setSelectedQRSlugs(prev => {
+                      const next = new Set(prev);
+                      if (checked) next.add(slug); else next.delete(slug);
+                      return next;
+                    })}
+                  />
                 ))
               )}
             </section>
+
+            {/* ── Bulk Import / Export ──────────────────────────────────────── */}
+            <details style={{ marginTop: 32 }}>
+              <summary style={{
+                fontFamily: C.mono, fontSize: 12, color: C.muted, cursor: 'pointer',
+                padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
+                borderRadius: 8, border: `1px solid ${C.border2}`,
+                listStyle: 'none', userSelect: 'none',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border2; e.currentTarget.style.color = C.muted; }}>
+                ⇅ Bulk Import / Export
+                {selectedQRSlugs.size > 0 && (
+                  <span style={{ marginLeft: 8, background: C.accent, color: '#000', borderRadius: 10, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>
+                    {selectedQRSlugs.size} selected
+                  </span>
+                )}
+              </summary>
+              <div style={{ padding: '20px 0' }}>
+                <QRBulkPanel
+                  selectedSlugs={selectedQRSlugs}
+                  qrCodes={qrCodes}
+                  token={token}
+                  onRefresh={fetchQRCodes}
+                  toast={toast}
+                />
+              </div>
+            </details>
+
+            {/* ── Batch QR Image Export ─────────────────────────────────────── */}
+            <details style={{ marginTop: 12 }}>
+              <summary style={{
+                fontFamily: C.mono, fontSize: 12, color: C.muted, cursor: 'pointer',
+                padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
+                borderRadius: 8, border: `1px solid ${C.border2}`,
+                listStyle: 'none', userSelect: 'none',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border2; e.currentTarget.style.color = C.muted; }}>
+                ⊞ Batch QR Image Export
+              </summary>
+              <div style={{ padding: '20px 0' }}>
+                <QRBatch baseOptions={{ dotType:'rounded', cornerSq:'extra-rounded', cornerDot:'dot', dark:'#0a0a0a', light:'#A4F670', ecLevel:'M' }} />
+              </div>
+            </details>
+
+            {/* ── Decode QR from Image ──────────────────────────────────────── */}
+            <details style={{ marginTop: 12, marginBottom: 40 }}>
+              <summary style={{
+                fontFamily: C.mono, fontSize: 12, color: C.muted, cursor: 'pointer',
+                padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
+                borderRadius: 8, border: `1px solid ${C.border2}`,
+                listStyle: 'none', userSelect: 'none',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border2; e.currentTarget.style.color = C.muted; }}>
+                ⊙ Decode QR from Image
+              </summary>
+              <div style={{ padding: '20px 0' }}>
+                <QRDecodePanel />
+              </div>
+            </details>
           </>
         )}
 

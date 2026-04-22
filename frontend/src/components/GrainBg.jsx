@@ -3,20 +3,88 @@ import { useEffect, useRef } from 'react';
 const VS = `attribute vec2 p; void main(){ gl_Position = vec4(p,0,1); }`;
 const FS = `precision mediump float;
 uniform vec2 res; uniform float t; uniform vec2 mouse; uniform float click;
-float r(vec2 c){return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);}
-vec3 blob(vec2 uv,vec2 c,float rad,vec3 col){float d=length(uv-c);return col*smoothstep(rad,0.,d);}
+
+/* ---- fast hash ---- */
+float h1(vec2 c){return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);}
+float h2(vec2 c){return fract(sin(dot(c,vec2(93.9898,67.345)))*28491.2918);}
+
+/* ---- value noise ---- */
+float vnoise(vec2 p){
+  vec2 i=floor(p); vec2 f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h1(i),h1(i+vec2(1,0)),f.x),
+             mix(h1(i+vec2(0,1)),h1(i+vec2(1,1)),f.x),f.y);
+}
+
+/* ---- fBm (4 octaves) ---- */
+float fbm(vec2 p){
+  float v=0.; float a=.5;
+  mat2 rot=mat2(1.7,.9,-.9,1.7);
+  for(int i=0;i<4;i++){v+=a*vnoise(p); p=rot*p*2.01; a*=.5;}
+  return v;
+}
+
+/* ---- vortex swirl around center c ---- */
+vec2 swirl(vec2 uv, vec2 c, float strength){
+  vec2 d=uv-c; float r=length(d)+.001;
+  float ang=strength/r; float co=cos(ang); float si=sin(ang);
+  return c+vec2(co*d.x-si*d.y, si*d.x+co*d.y);
+}
+
+/* ---- glowing blob ---- */
+vec3 blob(vec2 uv,vec2 c,float rad,vec3 col){
+  float d=length(uv-c);
+  float soft=smoothstep(rad,0.,d);
+  float core=smoothstep(rad*.35,0.,d)*.55;
+  return col*(soft+core);
+}
+
 void main(){
-  vec2 uv=gl_FragCoord.xy/res; uv.y=1.-uv.y; float s=t*.14;
+  vec2 uv=gl_FragCoord.xy/res; uv.y=1.-uv.y;
+  float s=t*.13;
   vec2 m=mouse/res;
-  vec3 c=vec3(.038,.038,.038);
-  c+=blob(uv,vec2(.28+sin(s*.9)*.18,.38+cos(s*.7)*.14),.42,vec3(.018,.072,.022));
-  c+=blob(uv,vec2(.72+cos(s*.8)*.14,.65+sin(s*.6)*.16),.38,vec3(.012,.055,.028));
-  c+=blob(uv,vec2(.5+sin(s*1.2)*.09,.18+cos(s*.95)*.09),.3,vec3(.022,.04,.018));
-  float cr=click*exp(-click*2.5);
-  c+=blob(uv,m,.24+cr*.15,vec3(.03,.1,.026))*(.45+cr*.6);
-  c=clamp(c,vec3(.032),vec3(.072,.13,.065));
-  float g=r(uv+vec2(t*11.3,t*7.1))*.02-.01;
-  c+=g; gl_FragColor=vec4(c,1.);
+
+  /* animated swirl distortion on uv */
+  vec2 suv1=swirl(uv, vec2(.30+sin(s*.9)*.14,.42+cos(s*.7)*.11), .032*(1.+sin(s*.4)*.4));
+  vec2 suv2=swirl(uv, vec2(.70+cos(s*.8)*.12,.60+sin(s*.6)*.13), .028*(1.+cos(s*.5)*.4));
+  vec2 suv3=swirl(uv, vec2(.50+sin(s*1.1)*.07,.22+cos(s*.95)*.08), .018);
+
+  /* fBm warp — two layers offset by domain warp */
+  vec2 fw=vec2(fbm(uv*2.8+vec2(s*.18,s*.12)), fbm(uv*2.8+vec2(3.2,1.7)+s*.09));
+  vec2 warpUV=uv+fw*.08;
+  float noise1=fbm(warpUV*3.5+s*.07);
+  float noise2=fbm(uv*5.1-s*.05);
+
+  /* base dark background */
+  vec3 c=vec3(.03,.03,.03);
+
+  /* primary blobs (swirlled uv for organic feel) */
+  c+=blob(suv1, vec2(.28+sin(s*.9)*.18,.38+cos(s*.7)*.14), .44, vec3(.016,.082,.025));
+  c+=blob(suv2, vec2(.72+cos(s*.8)*.14,.65+sin(s*.6)*.16), .40, vec3(.012,.065,.032));
+  c+=blob(suv3, vec2(.50+sin(s*1.2)*.09,.18+cos(s*.95)*.09), .32, vec3(.020,.048,.020));
+
+  /* secondary soft blobs for depth */
+  c+=blob(uv, vec2(.15+cos(s*.55)*.11,.70+sin(s*.45)*.10), .30, vec3(.010,.040,.018));
+  c+=blob(uv, vec2(.85+sin(s*.65)*.09,.30+cos(s*.75)*.12), .26, vec3(.014,.038,.016));
+
+  /* fBm noise tinting (green channel mostly) */
+  c+=vec3(.004, noise1*.028+noise2*.012, .003)*smoothstep(.35,.9,noise1);
+
+  /* mouse glow + click burst */
+  float cr=click*exp(-click*2.4);
+  c+=blob(uv, m, .22+cr*.14, vec3(.026,.12,.028))*(.5+cr*.7);
+  /* halo ring on click */
+  float ringDist=abs(length(uv-m)-(.22+cr*.25));
+  c+=vec3(.010,.062,.014)*smoothstep(.06,0.,ringDist)*cr*1.2;
+
+  /* clamp to dark green range, brighter than before */
+  c=clamp(c, vec3(.028), vec3(.095,.20,.080));
+
+  /* film grain */
+  float g=h1(uv+vec2(t*11.3,t*7.1))*.022-.011;
+  float g2=h2(uv+vec2(t*8.1,t*13.7))*.012-.006;
+  c+=g+g2;
+
+  gl_FragColor=vec4(c,1.);
 }`;
 
 function makeShader(gl, type, src) {

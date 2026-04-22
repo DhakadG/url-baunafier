@@ -9,7 +9,7 @@ import { AnalyticsPanel } from './AnalyticsPanel';
 import { QREditModal } from './QREditModal';
 import { deleteQRCode, updateQRCode } from '../services/api';
 
-export function QRCodeRow({ entry, token, onRefresh, toast }) {
+export function QRCodeRow({ entry, token, onRefresh, toast, selected = false, onSelect }) {
   const [expanded, setExpanded] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -63,13 +63,21 @@ export function QRCodeRow({ entry, token, onRefresh, toast }) {
       )}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '120px 1fr 64px 100px 80px 200px',
+        gridTemplateColumns: '20px 120px 1fr 64px 100px 80px 200px',
         gap: 12,
         padding: '12px 0',
         borderBottom: `1px solid ${C.border}`,
         alignItems: 'center',
         fontSize: 13,
       }}>
+        {/* Checkbox */}
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={e => onSelect?.(entry.slug, e.target.checked)}
+          aria-label={`Select ${entry.slug}`}
+          style={{ accentColor: C.accent, width: 14, height: 14, cursor: 'pointer' }}
+        />
         {/* Slug */}
         <div style={{ overflow: 'hidden' }}>
           <a
