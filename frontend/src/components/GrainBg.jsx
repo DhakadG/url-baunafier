@@ -7,7 +7,7 @@ float r(vec2 c){return fract(sin(dot(c,vec2(12.9898,78.233)))*43758.5453);}
 vec3 blob(vec2 uv,vec2 c,float rad,vec3 col){float d=length(uv-c);return col*smoothstep(rad,0.,d);}
 void main(){
   vec2 uv=gl_FragCoord.xy/res; uv.y=1.-uv.y; float s=t*.14;
-  vec2 m=mouse/res; m.y=1.-m.y;
+  vec2 m=mouse/res;
   vec3 c=vec3(.038,.038,.038);
   c+=blob(uv,vec2(.28+sin(s*.9)*.18,.38+cos(s*.7)*.14),.42,vec3(.018,.072,.022));
   c+=blob(uv,vec2(.72+cos(s*.8)*.14,.65+sin(s*.6)*.16),.38,vec3(.012,.055,.028));
@@ -102,7 +102,7 @@ export function GrainBg() {
         inset: 0,
         width: '100%',
         height: '100%',
-        zIndex: 0,
+        zIndex: -1,
         pointerEvents: 'none',
         display: 'block',
       }}
