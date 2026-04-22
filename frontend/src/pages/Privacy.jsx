@@ -18,7 +18,7 @@ const SECTIONS = [
 
 export function PrivacyPage() {
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', color: C.text, display: 'flex', flexDirection: 'column' }}>
       <nav style={{ padding: '0 32px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${C.border}` }}>
         <Link to="/" style={{ textDecoration: 'none' }}><Logo size="sm" /></Link>
         <Link to="/" style={{ fontFamily: C.mono, fontSize: 13, color: C.muted, textDecoration: 'none' }}>← back</Link>

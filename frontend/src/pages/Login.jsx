@@ -58,7 +58,10 @@ export function LoginPage({ toast }) {
         <InputField label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
         <InputField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
         {error && <div style={{ color: C.error, fontFamily: C.mono, fontSize: 13, marginBottom: 14 }}>{error}</div>}
-        <button type="submit" disabled={loading} style={primaryBtn}>{loading ? 'Logging in…' : 'Login'}</button>
+        <button type="submit" disabled={loading} style={primaryBtn}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.boxShadow = '0 0 20px rgba(164,246,112,0.35)'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = 'none'; }}
+        >{loading ? 'Logging in…' : 'Login'}</button>
       </form>
       <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginTop: 18, textAlign: 'center' }}>
         No account? <Link to="/signup" style={{ color: C.accent }}>Sign up</Link>

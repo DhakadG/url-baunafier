@@ -60,7 +60,10 @@ export function SignupPage({ toast }) {
         <InputField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
         <InputField label="Confirm password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
         {error && <div style={{ color: C.error, fontFamily: C.mono, fontSize: 13, marginBottom: 14 }}>{error}</div>}
-        <button type="submit" disabled={loading} style={primaryBtn}>{loading ? 'Creating…' : 'Create account'}</button>
+        <button type="submit" disabled={loading} style={primaryBtn}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.boxShadow = '0 0 20px rgba(164,246,112,0.35)'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = 'none'; }}
+        >{loading ? 'Creating…' : 'Create account'}</button>
       </form>
       <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginTop: 18, textAlign: 'center' }}>
         Have an account? <Link to="/login" style={{ color: C.accent }}>Login</Link>

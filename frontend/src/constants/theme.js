@@ -8,6 +8,7 @@ export const C = {
   accent: "#A4F670",
   accentDim: "#8eb000",
   error: "#ff4444",
+  warning: "#ff9900",
   text: "#e8e4df",
   muted: "#666",
   display: "'Instrument Serif', Georgia, serif",
@@ -15,8 +16,16 @@ export const C = {
   space: "'Space Grotesk', sans-serif",
 };
 
+// Frosted glass surface — use spread: { ...glass }
+export const glass = {
+  background: "rgba(255,255,255,0.04)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  border: "1px solid rgba(164,246,112,0.12)",
+};
+
 export const inputStyle = {
-  background: C.bg,
+  background: "rgba(10,10,10,0.7)",
   border: `1px solid ${C.border2}`,
   borderRadius: 8,
   padding: "10px 14px",
@@ -24,7 +33,7 @@ export const inputStyle = {
   fontFamily: C.mono,
   fontSize: 14,
   outline: "none",
-  transition: "border-color .15s",
+  transition: "border-color .15s, box-shadow .15s",
   boxSizing: "border-box",
   width: "100%",
 };
@@ -40,7 +49,7 @@ export const primaryBtn = {
   fontSize: 14,
   fontWeight: 700,
   cursor: "pointer",
-  transition: "opacity .15s",
+  transition: "opacity .15s, box-shadow .15s",
 };
 
 export const actionBtn = {

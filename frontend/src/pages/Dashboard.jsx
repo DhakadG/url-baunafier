@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { C, inputStyle, actionBtn, primaryBtn } from '../constants/theme';
+import { C, inputStyle, actionBtn, primaryBtn, glass } from '../constants/theme';
 import { API, listQRCodes, createQRCode } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { NavBar } from '../layouts/MainLayout';
@@ -142,7 +142,7 @@ export function DashboardPage({ toast }) {
   });
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
+    <div style={{ minHeight: '100vh', color: C.text }}>
       <NavBar toast={toast} />
       <main style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 24px' }}>
 
@@ -250,16 +250,19 @@ export function DashboardPage({ toast }) {
               )}
             </div>
 
-            <button type="submit" disabled={shortening} style={{
-              ...primaryBtn, width: 'auto', padding: '10px 28px',
-            }}>{shortening ? 'Shortening…' : 'Shorten ✦'}</button>
+            <button type="submit" disabled={shortening}
+              style={{ ...primaryBtn, width: 'auto', padding: '10px 28px' }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.boxShadow = '0 0 20px rgba(164,246,112,0.35)'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = 'none'; }}
+            >{shortening ? 'Shortening…' : 'Shorten ✦'}</button>
           </form>
 
           {result && (
             <div style={{
-              marginTop: 20, background: C.card, border: `1px solid ${C.border2}`,
+              ...glass, marginTop: 20,
               borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center',
               justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+              animation: 'fadeUp .25s ease',
             }}>
               <div>
                 <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, marginBottom: 4 }}>Your short link</div>
@@ -269,7 +272,11 @@ export function DashboardPage({ toast }) {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <QRButton url={result.short_url} />
-                <button onClick={copyResult} style={{ ...actionBtn, color: C.accent, borderColor: C.accent }}>Copy</button>
+                <button onClick={copyResult}
+                  style={{ ...actionBtn, color: C.accent, borderColor: C.accent, borderRadius: 8, padding: '6px 16px' }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 14px rgba(164,246,112,0.3)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                >Copy</button>
               </div>
             </div>
           )}
@@ -362,7 +369,11 @@ export function DashboardPage({ toast }) {
                     onBlur={e => e.currentTarget.style.borderColor = C.border2}
                   />
                 </div>
-                <button type="submit" disabled={qrCreating} style={{ ...primaryBtn, width: 'auto', padding: '10px 28px' }}>
+                <button type="submit" disabled={qrCreating}
+                  style={{ ...primaryBtn, width: 'auto', padding: '10px 28px' }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.boxShadow = '0 0 20px rgba(164,246,112,0.35)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
                   {qrCreating ? 'Creating…' : 'Create QR redirect ▦'}
                 </button>
               </form>

@@ -5,9 +5,9 @@ import { Logo } from './Logo';
 
 export function AuthCard({ title, children }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <Link to="/" style={{ textDecoration: 'none', marginBottom: 36 }}><Logo size="sm" /></Link>
-      <div style={{ width: '100%', maxWidth: 420, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '36px 32px' }}>
+      <div style={{ width: '100%', maxWidth: 420, background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', border: '1px solid rgba(164,246,112,0.12)', borderRadius: 14, padding: '36px 32px' }}>
         <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 28, color: C.text, marginBottom: 28 }}>{title}</h2>
         {children}
       </div>
@@ -23,12 +23,12 @@ export function InputField({ label, ...props }) {
       <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
       <div style={{ position: 'relative' }}>
         <input {...props} type={isPassword ? (show ? 'text' : 'password') : props.type} style={{
-          width: '100%', background: C.bg, border: `1px solid ${C.border2}`, borderRadius: 8,
+          width: '100%', background: 'rgba(10,10,10,0.7)', border: `1px solid ${C.border2}`, borderRadius: 8,
           padding: isPassword ? '10px 44px 10px 14px' : '10px 14px', color: C.text, fontFamily: C.mono, fontSize: 14,
-          outline: 'none', boxSizing: 'border-box', transition: 'border-color .15s',
+          outline: 'none', boxSizing: 'border-box', transition: 'border-color .15s, box-shadow .15s',
           ...(props.style || {}),
-        }} onFocus={e => e.currentTarget.style.borderColor = C.accent}
-           onBlur={e => e.currentTarget.style.borderColor = C.border2} />
+        }} onFocus={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(164,246,112,0.06)'; }}
+           onBlur={e => { e.currentTarget.style.borderColor = C.border2; e.currentTarget.style.boxShadow = 'none'; }} />
         {isPassword && (
           <button type="button" onClick={() => setShow(s => !s)} style={{
             position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',

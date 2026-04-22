@@ -15,9 +15,12 @@ export function NavBar({ toast }) {
   return (
     <nav style={{
       position: 'sticky', top: 0, zIndex: 100,
-      background: `${C.bg}ee`, backdropFilter: 'blur(12px)',
+      background: 'rgba(10,10,10,0.85)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       borderBottom: `1px solid ${C.border}`,
-      padding: '0 24px', display: 'flex', alignItems: 'center',
+      borderLeft: 'none', borderRight: 'none', borderTop: 'none',
+      padding: '0 32px', display: 'flex', alignItems: 'center',
       justifyContent: 'space-between', height: 60,
     }}>
       <Link to={user ? '/dashboard' : '/'} style={{ textDecoration: 'none' }}>
@@ -25,7 +28,11 @@ export function NavBar({ toast }) {
       </Link>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         {user?.role === 'admin' && (
-          <Link to="/v1/admin" style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, textDecoration: 'none' }}>admin</Link>
+          <Link to="/v1/admin" style={{
+            fontFamily: C.mono, fontSize: 11, color: C.accent, textDecoration: 'none',
+            background: 'rgba(164,246,112,0.07)', border: '1px solid rgba(164,246,112,0.18)',
+            borderRadius: 5, padding: '2px 8px',
+          }}>admin</Link>
         )}
         {user && (
           <>
@@ -44,7 +51,7 @@ export function NavBar({ toast }) {
 
 export function Footer() {
   return (
-    <footer style={{ borderTop: `1px solid ${C.border}`, background: C.bg, padding: '56px 40px 40px' }}>
+    <footer style={{ borderTop: `1px solid ${C.border}`, padding: '56px 40px 40px' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 40, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 28%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', minWidth: 120 }}>
           <svg width="96" height="96" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 20, overflow: 'hidden' }}>

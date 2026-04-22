@@ -123,7 +123,7 @@ export function AdminPage({ toast }) {
   });
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
+    <div style={{ minHeight: '100vh', color: C.text }}>
       <NavBar toast={toast} />
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px' }}>
         <h1 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 36, marginBottom: 8 }}>Admin Dashboard</h1>
