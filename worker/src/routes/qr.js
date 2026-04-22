@@ -28,7 +28,11 @@ export async function handleCreateQR(request, env) {
   if (error) return error;
 
   let body;
-  try { body = await request.json(); } catch { return jsonResponse({ error: "Invalid JSON body." }, 400); }
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
 
   const { slug, name, url, notes } = body;
 
@@ -77,7 +81,11 @@ export async function handleUpdateQR(slug, request, env) {
   }
 
   let body;
-  try { body = await request.json(); } catch { return jsonResponse({ error: "Invalid JSON body." }, 400); }
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
 
   if (body.name !== undefined) entry.name = String(body.name).trim().slice(0, 100);
   if (body.url !== undefined) {
@@ -144,7 +152,9 @@ export async function handleAdminListQR(request, env) {
     const userRaw = await env.KV.get(`user:${entry.ownerId}`);
     let ownerEmail = "—";
     if (userRaw) {
-      try { ownerEmail = JSON.parse(userRaw).email || "—"; } catch {}
+      try {
+        ownerEmail = JSON.parse(userRaw).email || "—";
+      } catch {}
     }
     const { click_log, ...rest } = entry;
     entries.push({ ...rest, total_scans: (entry.click_log || []).length, owner_email: ownerEmail });

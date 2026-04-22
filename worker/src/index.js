@@ -4,25 +4,11 @@
 // ============================================================
 import { CORS_HEADERS } from "./config/constants.js";
 import { jsonResponse } from "./utils/response.js";
-import {
-  handleSignup, handleLogin, handleLogout, handleMe,
-  handleGoogleAuth,
-  handleGithubInit, handleGithubCallback,
-  handleDiscordInit, handleDiscordCallback,
-} from "./routes/auth.js";
-import {
-  handleShorten, handleListLinks,
-  handleGetStats, handleUpdateLink, handleDeleteLink,
-} from "./routes/links.js";
-import {
-  handleAdminStats, handleAdminUsers,
-  handleAdminUpdateUser, handleAdminDeleteUser,
-  handleAdminLinks,
-} from "./routes/admin.js";
+import { handleSignup, handleLogin, handleLogout, handleMe, handleGoogleAuth, handleGithubInit, handleGithubCallback, handleDiscordInit, handleDiscordCallback } from "./routes/auth.js";
+import { handleShorten, handleListLinks, handleGetStats, handleUpdateLink, handleDeleteLink } from "./routes/links.js";
+import { handleAdminStats, handleAdminUsers, handleAdminUpdateUser, handleAdminDeleteUser, handleAdminLinks } from "./routes/admin.js";
 import { handleRedirect, handlePasswordSubmit } from "./routes/redirect.js";
-import {
-  handleListQR, handleCreateQR, handleUpdateQR, handleDeleteQR, handleQRStats, handleAdminListQR,
-} from "./routes/qr.js";
+import { handleListQR, handleCreateQR, handleUpdateQR, handleDeleteQR, handleQRStats, handleAdminListQR } from "./routes/qr.js";
 import { recordClick } from "./services/analyticsService.js";
 import { qrNotFoundPage, qrPausedPage } from "./utils/pages.js";
 
@@ -52,14 +38,22 @@ export default {
     const statsMatch = path.match(/^\/api\/stats\/([^/?#\s]{2,80})$/);
     if (statsMatch && method === "GET") {
       let statsCode;
-      try { statsCode = decodeURIComponent(statsMatch[1]); } catch { statsCode = statsMatch[1]; }
+      try {
+        statsCode = decodeURIComponent(statsMatch[1]);
+      } catch {
+        statsCode = statsMatch[1];
+      }
       return handleGetStats(statsCode, request, env);
     }
 
     const linksMatch = path.match(/^\/api\/links\/([^/?#\s]{2,80})$/);
     if (linksMatch) {
       let linkCode;
-      try { linkCode = decodeURIComponent(linksMatch[1]); } catch { linkCode = linksMatch[1]; }
+      try {
+        linkCode = decodeURIComponent(linksMatch[1]);
+      } catch {
+        linkCode = linksMatch[1];
+      }
       if (method === "PATCH") return handleUpdateLink(linkCode, request, env);
       if (method === "DELETE") return handleDeleteLink(linkCode, request, env);
     }
@@ -83,14 +77,22 @@ export default {
     const qrStatsMatch = path.match(/^\/api\/qr\/stats\/([^/?#\s]{2,80})$/);
     if (qrStatsMatch && method === "GET") {
       let qrSlug;
-      try { qrSlug = decodeURIComponent(qrStatsMatch[1]); } catch { qrSlug = qrStatsMatch[1]; }
+      try {
+        qrSlug = decodeURIComponent(qrStatsMatch[1]);
+      } catch {
+        qrSlug = qrStatsMatch[1];
+      }
       return handleQRStats(qrSlug, request, env);
     }
 
     const qrSlugMatch = path.match(/^\/api\/qr\/([^/?#\s]{2,80})$/);
     if (qrSlugMatch) {
       let qrSlug;
-      try { qrSlug = decodeURIComponent(qrSlugMatch[1]); } catch { qrSlug = qrSlugMatch[1]; }
+      try {
+        qrSlug = decodeURIComponent(qrSlugMatch[1]);
+      } catch {
+        qrSlug = qrSlugMatch[1];
+      }
       if (method === "PATCH") return handleUpdateQR(qrSlug, request, env);
       if (method === "DELETE") return handleDeleteQR(qrSlug, request, env);
     }
@@ -99,7 +101,11 @@ export default {
     const qrRedirectMatch = path.match(/^\/qr\/([^/?#\s]{2,80})$/);
     if (qrRedirectMatch && method === "GET") {
       let qrSlug;
-      try { qrSlug = decodeURIComponent(qrRedirectMatch[1]); } catch { qrSlug = qrRedirectMatch[1]; }
+      try {
+        qrSlug = decodeURIComponent(qrRedirectMatch[1]);
+      } catch {
+        qrSlug = qrRedirectMatch[1];
+      }
 
       const raw = await env.KV.get(`qr:${qrSlug}`);
       if (!raw) return qrNotFoundPage(qrSlug);
@@ -115,7 +121,11 @@ export default {
     const redirectMatch = path.match(/^\/([^/?#\s]{1,80})$/);
     if (redirectMatch) {
       let code;
-      try { code = decodeURIComponent(redirectMatch[1]); } catch { code = redirectMatch[1]; }
+      try {
+        code = decodeURIComponent(redirectMatch[1]);
+      } catch {
+        code = redirectMatch[1];
+      }
       if (method === "POST") return handlePasswordSubmit(code, request, env, ctx);
       if (method === "GET") return handleRedirect(code, request, env, ctx);
     }
