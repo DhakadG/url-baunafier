@@ -107,7 +107,7 @@ export function QRDecodePanel() {
         )}
       </div>
       {result && (
-        <div style={{ background: 'rgba(164,246,112,0.04)', border: `1px solid rgba(164,246,112,0.25)`, borderRadius: 12, padding: 16 }}>
+        <div style={{ background: 'rgba(108,99,255,0.04)', border: `1px solid rgba(108,99,255,0.25)`, borderRadius: 12, padding: 16 }}>
           <div style={{ fontFamily: C.mono, fontSize: 10, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>✓ QR decoded</div>
           <ParsedResult raw={result} />
         </div>

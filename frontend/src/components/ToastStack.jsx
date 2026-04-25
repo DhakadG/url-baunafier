@@ -5,8 +5,8 @@ export function ToastStack({ toasts }) {
     <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {toasts.map(t => (
         <div key={t.id} style={{
-          background: t.type === 'error' ? 'rgba(255,68,68,0.10)' : 'rgba(164,246,112,0.08)',
-          border: `1px solid ${t.type === 'error' ? 'rgba(255,68,68,0.28)' : 'rgba(164,246,112,0.28)'}`,
+          background: t.type === 'error' ? 'rgba(255,68,68,0.10)' : 'rgba(108,99,255,0.10)',
+          border: `1px solid ${t.type === 'error' ? 'rgba(255,68,68,0.28)' : 'rgba(108,99,255,0.28)'}`,  
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
           borderRadius: 9,

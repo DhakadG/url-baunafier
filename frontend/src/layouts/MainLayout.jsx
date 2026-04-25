@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { C } from '../constants/theme';
 import { Logo } from '../components/Logo';
@@ -6,6 +7,13 @@ import { useAuth } from '../context/AuthContext';
 export function NavBar({ toast }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', fn);
+    return () => window.removeEventListener('scroll', fn);
+  }, []);
 
   async function handleLogout() {
     await logout();
@@ -14,34 +22,40 @@ export function NavBar({ toast }) {
 
   return (
     <nav style={{
-      position: 'sticky', top: 0, zIndex: 100,
-      background: 'rgba(10,10,10,0.85)',
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      borderBottom: `1px solid ${C.border}`,
-      borderLeft: 'none', borderRight: 'none', borderTop: 'none',
-      padding: '0 32px', display: 'flex', alignItems: 'center',
-      justifyContent: 'space-between', height: 60,
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+      height: 66, display: 'flex', alignItems: 'center', padding: '0 48px',
+      justifyContent: 'space-between', transition: 'background .35s, border-color .35s',
+      ...(scrolled ? {
+        background: 'rgba(7,6,15,0.85)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+      } : {}),
     }}>
       <Link to={user ? '/dashboard' : '/'} style={{ textDecoration: 'none' }}>
         <Logo size="sm" />
       </Link>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 32 }}>
+        {['Features', 'Analytics', 'Pricing'].map(l => (
+          <a key={l} href={`#${l.toLowerCase()}`}
+            style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, textDecoration: 'none', letterSpacing: '.03em', transition: 'color .2s' }}
+            onMouseEnter={e => e.currentTarget.style.color = C.text}
+            onMouseLeave={e => e.currentTarget.style.color = C.muted}>{l}</a>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         {user?.role === 'admin' && (
-          <Link to="/v1/admin" style={{
-            fontFamily: C.mono, fontSize: 11, color: C.accent, textDecoration: 'none',
-            background: 'rgba(164,246,112,0.07)', border: '1px solid rgba(164,246,112,0.18)',
-            borderRadius: 5, padding: '2px 8px',
-          }}>admin</Link>
+          <Link to="/v1/admin" className="btn-g btn-sm" style={{ fontFamily: C.mono, fontSize: 11, color: C.accent }}>admin</Link>
         )}
-        {user && (
+        {user ? (
           <>
             <span style={{ fontFamily: C.mono, fontSize: 12, color: C.muted }}>{user.email}</span>
-            <button onClick={handleLogout} style={{
-              background: 'none', border: `1px solid ${C.border2}`, borderRadius: 7,
-              color: C.muted, cursor: 'pointer', fontFamily: C.mono, fontSize: 12,
-              padding: '5px 14px', transition: 'color .15s',
-            }}>logout</button>
+            <button onClick={handleLogout} className="btn-g btn-sm">logout</button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="btn-g btn-sm">Sign in</Link>
+            <Link to="/signup" className="btn-p btn-sm">Get started free →</Link>
           </>
         )}
       </div>
@@ -51,36 +65,22 @@ export function NavBar({ toast }) {
 
 export function Footer() {
   return (
-    <footer style={{ borderTop: `1px solid ${C.border}`, padding: '56px 40px 40px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 40, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ flex: '0 0 28%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', minWidth: 120 }}>
-          <svg width="96" height="96" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 20, overflow: 'hidden' }}>
-            <path d="M406.718 0.0709539C407.168 0.0517632 407.618 0.0372891 408.068 0.0278621C467.404 -1.24984 512.384 41.5499 511.843 101.008C511.625 124.679 511.857 148.719 511.86 172.42L511.87 313.91L511.883 380.276C511.89 396.942 512.764 416.503 509.623 432.66C506.106 451.308 497.249 468.523 484.132 482.206C470.588 496.222 453.125 505.797 434.043 509.665C419.364 512.722 405.401 511.867 390.565 511.891L333.073 511.79H189.165C161.521 511.796 132.981 511.524 105.408 511.985C77.3282 512.355 53.442 505.985 32.0653 486.673C11.2391 467.86 1.16795 441.555 0.18881 413.94C-0.0705019 406.621 0.110212 398.541 0.119617 391.127L0.226768 346.598L0.222063 209.994L0.186462 132.213C0.171347 115.753 -0.840037 94.4489 2.00903 78.7395C5.26117 61.3469 13.3018 45.2129 25.2228 32.1612C38.4964 17.4446 56.0207 7.2466 75.3525 2.98929C92.0589 -0.729333 106.955 0.257819 123.812 0.272296L171.721 0.294181L325.693 0.295527L376.78 0.268248C386.537 0.259494 397.048 0.460155 406.718 0.0709539Z" fill="#070707"/>
-            <path d="M316.796 174.538C328.945 173.134 338.714 181.619 337.296 194.32C336.696 199.724 332.402 205.47 329.306 209.877C326.138 214.304 322.912 218.688 319.628 223.027C310.018 235.934 310.401 241.732 323.009 252.781C330.424 259.277 338.287 265.52 345.879 271.821C369.866 291.732 393.694 312.315 413.175 336.798C424.467 350.969 430.301 369.108 427.733 387.207C425.342 404.3 416.202 419.723 402.357 430.031C388.443 440.415 371.776 444.317 354.661 441.811C345.159 440.4 336.052 437.04 327.907 431.944C316.821 424.862 307.97 415.346 299.073 405.845C274.026 379.09 254.748 348.987 232.987 319.777L225.473 309.769C229.865 302.94 234.196 296.068 238.465 289.16C250.303 292.571 254.249 300.875 261.092 310.312C279.914 336.274 298.429 362.276 320.152 385.955C333.958 401.002 348.226 417.238 370.987 413.147C379.986 411.592 387.958 406.423 393.051 398.846C399.984 388.661 400.874 375.531 395.966 364.294C387.108 344.014 340.873 305.241 322.492 289.609C312.549 281.149 301.391 272.768 293.387 262.409C288.808 256.485 285.347 249.403 283.951 242.025C280.102 221.714 296.725 207.1 307.12 191.806L302.574 195.49C300.888 193.509 298.639 191.248 296.827 189.326C302.451 181.964 307.428 176.51 316.796 174.538Z" fill="#A4F670"/>
-            <path d="M139.23 70.0706C143.122 69.4764 150.261 69.6956 154.182 70.0992C178.701 72.6242 194.786 88.0111 211.025 104.875C238.942 133.865 261.46 167.009 286.435 198.464C281.212 206.248 276.109 214.108 271.118 222.041C261.724 215.158 258.769 210.04 251.876 200.769C246.003 192.828 240.041 184.953 233.992 177.145C216.661 154.727 198.072 131.781 177.439 112.323C168.333 103.735 157.557 97.9612 144.69 98.6217C135.715 99.1117 127.303 103.149 121.306 109.845C111.325 120.959 109.271 138.731 117.353 151.13C128.468 168.182 146.952 184.649 162.013 198.135C172.63 208.012 184.388 217.237 195.405 226.686C202.695 232.939 211.617 239.925 217.594 247.384C221.639 252.35 224.623 258.09 226.365 264.253C232.575 286.982 215.044 300.798 204.438 319.125C206.043 317.291 207.055 315.595 209.376 315.139C211.867 315.617 213.544 318.825 215.147 321.071C210.866 328.117 203.312 335.788 194.934 337.47C190.452 338.371 185.796 337.401 182.044 334.79C178.01 332.041 175.277 328.001 174.495 323.162C173.977 320.015 174.208 316.792 175.171 313.75C177.754 305.609 188.487 292.534 193.636 285.021C203.095 271.216 196.762 265.523 185.816 256.267C162.56 236.601 138.44 217.727 117.134 195.889C108.86 187.407 99.9339 178.048 93.7436 167.939C89.0977 160.404 85.9564 152.041 84.4941 143.31C81.6516 126.549 85.692 109.35 95.7004 95.6084C106.485 80.7998 121.408 72.9059 139.23 70.0706Z" fill="#A4F670"/>
-            <path d="M165.509 254.756C172.094 259.787 180.075 267.057 186.317 272.616C166.008 295.706 145.311 318.75 125.555 342.317C116.109 353.587 108.356 364.442 110.029 379.843C111.107 389.377 116.001 398.068 123.595 403.935C131.163 409.874 140.978 412.344 150.485 411.179C156.909 410.355 163.027 407.949 168.288 404.173C176.977 397.945 188.472 384.027 195.428 375.651C206.834 361.791 217.999 347.735 228.918 333.492C234.675 340.556 241.385 350.397 246.699 357.946L241.413 364.623C228.564 380.953 215.941 397.355 201.918 412.731C187.557 428.479 169.264 439.586 147.368 440.14C130.183 440.476 113.563 433.998 101.139 422.12C88.5605 409.971 81.3716 393.286 81.177 375.799C80.6923 346.875 99.8105 326.819 117.632 306.474C133.185 288.863 149.149 271.618 165.509 254.756Z" fill="#A4F670"/>
-            <path d="M364.638 73.3722C381.822 73.1212 398.409 79.6551 410.808 91.5565C423.46 103.564 430.704 120.187 430.885 137.63C431.439 169.137 407.95 191.549 388.206 213.188C374.57 228.182 360.696 242.961 346.593 257.515C340.561 251.663 331.761 244.918 325.109 238.88C345.53 217.261 365.521 195.236 385.063 172.82C386.878 170.74 388.654 168.627 390.39 166.483C398.348 156.497 403.607 146.639 402.012 133.464C400.898 124.101 396.094 115.568 388.665 109.761C380.943 103.799 371.181 101.116 361.499 102.292C355.292 103.09 349.371 105.386 344.25 108.981C335.761 115.001 321.789 131.355 314.653 139.831C304.703 151.649 293.165 164.983 283.728 177.216C278.111 169.317 271.438 160.815 265.586 152.997C270.035 148.008 274.682 142.017 279.005 136.785C286.557 127.53 294.315 118.447 302.279 109.543C320.559 89.0406 335.757 75.028 364.638 73.3722Z" fill="#A4F670"/>
-            <path d="M286.869 284.136C291.683 283.793 296.545 284.834 299.995 288.408C309.258 297.996 318.825 307.364 327.964 317.053C329.346 318.515 330.891 321.318 331.542 323.115C333.108 327.394 332.797 332.132 330.681 336.165C328.174 341.044 324.38 342.77 319.519 344.263C313.848 344.972 309.016 343.428 305.088 339.312C295.908 329.687 286.555 319.824 277.559 310.062C271.259 303.222 272.575 292.18 280.174 287.019C282.449 285.471 284.269 284.881 286.869 284.136Z" fill="#A4F670"/>
-            <path d="M195.047 169.49C207.738 167.932 213.882 180.043 222.144 187.602C227.148 192.182 232.127 197.694 236.791 202.568C241.281 207.259 242.695 215.036 239.666 220.811C237.154 225.847 233.768 227.535 228.764 229.255C216.129 231.286 209.224 218.456 200.953 210.966C196.416 205.921 190.638 201.388 186.416 196.131C177.752 185.341 182.685 173.05 195.047 169.49Z" fill="#A4F670"/>
-          </svg>
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 20, minWidth: 200 }}>
-          <Logo size="lg" />
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link to="/privacy" style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, textDecoration: 'none', transition: 'color .15s' }}
-              onMouseEnter={e => e.currentTarget.style.color = C.text}
-              onMouseLeave={e => e.currentTarget.style.color = C.muted}>Privacy Policy</Link>
-            <Link to="/terms" style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, textDecoration: 'none', transition: 'color .15s' }}
-              onMouseEnter={e => e.currentTarget.style.color = C.text}
-              onMouseLeave={e => e.currentTarget.style.color = C.muted}>Terms of Service</Link>
-            <a href="https://github.com/DhakadG/url-baunafier" target="_blank" rel="noreferrer"
+    <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '44px 48px', background: 'rgba(255,255,255,0.02)' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 40, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <Logo size="sm" />
+        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'center' }}>
+          {[['Privacy Policy', '/privacy'], ['Terms', '/terms'], ['GitHub ↗', 'https://github.com/DhakadG/url-baunafier']].map(([label, href]) => (
+            <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer"
               style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, textDecoration: 'none', transition: 'color .15s' }}
               onMouseEnter={e => e.currentTarget.style.color = C.text}
-              onMouseLeave={e => e.currentTarget.style.color = C.muted}>GitHub ↗</a>
-          </div>
-          <p style={{ fontFamily: C.mono, fontSize: 11, color: C.muted }}>© {new Date().getFullYear()} URL Baunafier · Built on Cloudflare Workers &amp; KV · All rights reserved.</p>
+              onMouseLeave={e => e.currentTarget.style.color = C.muted}>{label}</a>
+          ))}
         </div>
+        <p style={{ fontFamily: C.mono, fontSize: 11, color: C.muted2 }}>
+          © {new Date().getFullYear()} Baunafier · Built on Cloudflare Workers &amp; KV
+        </p>
       </div>
     </footer>
   );
 }
+

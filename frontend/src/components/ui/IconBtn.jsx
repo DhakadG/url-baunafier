@@ -7,7 +7,7 @@ export function IconBtn({ icon, onClick, title, hoverColor, active, disabled: di
   const col = active ? C.accent
     : hov ? (hoverColor || C.accent)
     : C.muted;
-  const bg = active ? 'rgba(164,246,112,0.10)'
+  const bg = active ? 'rgba(108,99,255,0.15)'
     : (hov && isRed) ? 'rgba(255,68,68,0.07)'
     : 'none';
   const bc = active ? C.accent

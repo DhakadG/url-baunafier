@@ -150,7 +150,7 @@ export function QRScanner() {
       <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
         <button type="button" onClick={startCamera} disabled={mode==='camera'}
           style={{ ...primaryBtn, padding:'9px 20px', fontSize:12, opacity:mode==='camera'?0.5:1 }}
-          onMouseEnter={e=>{if(mode!=='camera'){e.currentTarget.style.opacity='.88';e.currentTarget.style.boxShadow='0 0 16px rgba(164,246,112,0.35)';}}}
+          onMouseEnter={e=>{if(mode!=='camera'){e.currentTarget.style.opacity='.88';e.currentTarget.style.boxShadow='0 0 16px rgba(108,99,255,0.35)';}}}  
           onMouseLeave={e=>{e.currentTarget.style.opacity=mode==='camera'?'0.5':'1';e.currentTarget.style.boxShadow='none';}}>
           ⊙ Start camera
         </button>
@@ -187,7 +187,7 @@ export function QRScanner() {
 
       {/* Result */}
       {mode === 'done' && result && (
-        <div style={{ background:'rgba(164,246,112,0.04)', border:`1px solid ${C.accent}40`, borderRadius:12, padding:16 }}>
+        <div style={{ background:'rgba(108,99,255,0.04)', border:`1px solid ${C.accent}40`, borderRadius:12, padding:16 }}>
           <div style={{ fontFamily:C.mono, fontSize:10, color:C.accent, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>✓ QR detected</div>
           <ParsedResult raw={result} />
         </div>

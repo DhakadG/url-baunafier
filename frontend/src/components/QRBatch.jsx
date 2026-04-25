@@ -61,7 +61,7 @@ export function QRBatch({ baseOptions = {}, logoDataUrl = null }) {
         dotsOptions:          { type: baseOptions.dotType    || 'rounded',        color: baseOptions.dark    || '#0a0a0a' },
         cornersSquareOptions: { type: baseOptions.cornerSq   || 'extra-rounded',  color: baseOptions.dark    || '#0a0a0a' },
         cornersDotOptions:    { type: baseOptions.cornerDot  || 'dot',            color: baseOptions.dark    || '#0a0a0a' },
-        backgroundOptions:    { color: baseOptions.light     || '#A4F670' },
+        backgroundOptions:    { color: baseOptions.light     || '#6C63FF' },
         errorCorrectionLevel: baseOptions.ecLevel || 'M',
         ...(logoDataUrl ? { imageOptions:{ crossOrigin:'anonymous', margin:4, imageSize:0.3 }, image: logoDataUrl } : {}),
       });
@@ -121,7 +121,7 @@ export function QRBatch({ baseOptions = {}, logoDataUrl = null }) {
           rows={6}
           onChange={handlePaste}
           style={{ ...inputStyle, resize:'vertical', fontSize:12, fontFamily:C.mono }}
-          onFocus={e=>{e.target.style.borderColor=C.accent;e.target.style.boxShadow='0 0 0 3px rgba(164,246,112,0.06)';}}
+          onFocus={e=>{e.target.style.borderColor=C.accent;e.target.style.boxShadow='0 0 0 3px rgba(108,99,255,0.12)';}}  
           onBlur={e=>{e.target.style.borderColor=C.border2;e.target.style.boxShadow='none';}}
           aria-label="Paste QR data"
         />
@@ -158,7 +158,7 @@ export function QRBatch({ baseOptions = {}, logoDataUrl = null }) {
         <button type="button" onClick={generateZip}
           disabled={rows.length === 0 || progress !== null}
           style={{ ...primaryBtn, padding:'10px 24px', fontSize:12, opacity:(rows.length===0||progress)?0.5:1 }}
-          onMouseEnter={e=>{if(rows.length>0&&!progress){e.currentTarget.style.opacity='.88';e.currentTarget.style.boxShadow='0 0 16px rgba(164,246,112,0.35)';}}}
+          onMouseEnter={e=>{if(rows.length>0&&!progress){e.currentTarget.style.opacity='.88';e.currentTarget.style.boxShadow='0 0 16px rgba(108,99,255,0.35)';}}}  
           onMouseLeave={e=>{e.currentTarget.style.opacity=(rows.length===0||progress)?'0.5':'1';e.currentTarget.style.boxShadow='none';}}>
           ⊞ Generate &amp; Download ZIP
         </button>

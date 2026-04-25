@@ -54,30 +54,30 @@ void main(){
   float noise1=fbm(warpUV*3.5+s*.07);
   float noise2=fbm(uv*5.1-s*.05);
 
-  /* base dark background */
-  vec3 c=vec3(.03,.03,.03);
+  /* base dark purple background */
+  vec3 c=vec3(.028,.018,.052);
 
-  /* primary blobs (swirlled uv for organic feel) */
-  c+=blob(suv1, vec2(.28+sin(s*.9)*.18,.38+cos(s*.7)*.14), .44, vec3(.016,.082,.025));
-  c+=blob(suv2, vec2(.72+cos(s*.8)*.14,.65+sin(s*.6)*.16), .40, vec3(.012,.065,.032));
-  c+=blob(suv3, vec2(.50+sin(s*1.2)*.09,.18+cos(s*.95)*.09), .32, vec3(.020,.048,.020));
+  /* primary blobs — purple/violet (swirlled uv for organic feel) */
+  c+=blob(suv1, vec2(.28+sin(s*.9)*.18,.38+cos(s*.7)*.14), .44, vec3(.06,.03,.18));
+  c+=blob(suv2, vec2(.72+cos(s*.8)*.14,.65+sin(s*.6)*.16), .40, vec3(.09,.03,.22));
+  c+=blob(suv3, vec2(.50+sin(s*1.2)*.09,.18+cos(s*.95)*.09), .32, vec3(.04,.02,.14));
 
-  /* secondary soft blobs for depth */
-  c+=blob(uv, vec2(.15+cos(s*.55)*.11,.70+sin(s*.45)*.10), .30, vec3(.010,.040,.018));
-  c+=blob(uv, vec2(.85+sin(s*.65)*.09,.30+cos(s*.75)*.12), .26, vec3(.014,.038,.016));
+  /* secondary soft blobs — deep violet */
+  c+=blob(uv, vec2(.15+cos(s*.55)*.11,.70+sin(s*.45)*.10), .30, vec3(.08,.02,.20));
+  c+=blob(uv, vec2(.85+sin(s*.65)*.09,.30+cos(s*.75)*.12), .26, vec3(.05,.02,.16));
 
-  /* fBm noise tinting (green channel mostly) */
-  c+=vec3(.004, noise1*.028+noise2*.012, .003)*smoothstep(.35,.9,noise1);
+  /* fBm noise tinting — purple channel */
+  c+=vec3(.008,.004,noise1*.032+noise2*.014)*smoothstep(.35,.9,noise1);
 
-  /* mouse glow + click burst */
+  /* mouse glow + click burst — violet */
   float cr=click*exp(-click*2.4);
-  c+=blob(uv, m, .22+cr*.14, vec3(.026,.12,.028))*(.5+cr*.7);
+  c+=blob(uv, m, .22+cr*.14, vec3(.14,.06,.36))*(.5+cr*.8);
   /* halo ring on click */
   float ringDist=abs(length(uv-m)-(.22+cr*.25));
-  c+=vec3(.010,.062,.014)*smoothstep(.06,0.,ringDist)*cr*1.2;
+  c+=vec3(.06,.02,.22)*smoothstep(.06,0.,ringDist)*cr*1.2;
 
-  /* clamp to dark green range, brighter than before */
-  c=clamp(c, vec3(.028), vec3(.095,.20,.080));
+  /* clamp to dark purple range */
+  c=clamp(c, vec3(.025,.015,.048), vec3(.20,.08,.44));
 
   /* film grain */
   float g=h1(uv+vec2(t*11.3,t*7.1))*.022-.011;

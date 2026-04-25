@@ -9,7 +9,7 @@ export function ToggleSwitch({ enabled, onToggle, disabled: dis }) {
         width: 34, height: 19, borderRadius: 10,
         background: enabled ? C.accent : C.border2,
         position: 'relative', transition: 'background .15s', flexShrink: 0,
-        boxShadow: enabled ? '0 0 8px rgba(164,246,112,0.25)' : 'none',
+        boxShadow: enabled ? '0 0 8px rgba(108,99,255,0.35)' : 'none',
       }}>
         <div style={{
           position: 'absolute', top: 2, left: enabled ? 16 : 2,

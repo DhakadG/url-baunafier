@@ -1,8 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
-import { C, inputStyle, actionBtn, primaryBtn, glass } from '../constants/theme';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { C } from '../constants/theme';
 import { API, listQRCodes, createQRCode } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { NavBar } from '../layouts/MainLayout';
 import { QRButton } from '../components/QRButton';
 import { ExpiryPicker } from '../components/ExpiryPicker';
 import { LinkRow } from '../components/LinkRow';
@@ -10,14 +9,71 @@ import { QRCodeRow } from '../components/QRCodeRow';
 import { QRBulkPanel } from '../components/QRBulkPanel';
 import { QRBatch } from '../components/QRBatch';
 import { QRDecodePanel } from '../components/QRDecodePanel';
+import { AnalyticsPanel } from '../components/AnalyticsPanel';
 
-export function DashboardPage({ toast }) {
-  const { token } = useAuth();
+/* ── Count-up hook ────────────────────────────────────────────────────────── */
+function useCount(target, ms = 1100) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!target) return;
+    let start = 0;
+    const step = Math.max(1, Math.ceil(target / (ms / 16)));
+    const t = setInterval(() => {
+      start += step;
+      if (start >= target) { setVal(target); clearInterval(t); }
+      else setVal(start);
+    }, 16);
+    return () => clearInterval(t);
+  }, [target, ms]);
+  return val;
+}
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState('links');
+/* ── Ambient background for dashboard ────────────────────────────────────── */
+function AmbientBg() {
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', width: 600, height: 600, borderRadius: '50%', top: -200, left: -100, background: 'radial-gradient(circle, rgba(108,99,255,0.1) 0%, transparent 70%)', animation: 'floatA 20s ease-in-out infinite' }} />
+      <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', bottom: 0, right: -100, background: 'radial-gradient(circle, rgba(255,99,184,0.07) 0%, transparent 70%)', animation: 'floatB 25s ease-in-out infinite' }} />
+      <div style={{
+        position: 'absolute', inset: 0, opacity: 0.15,
+        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)',
+        backgroundSize: '28px 28px',
+      }} />
+    </div>
+  );
+}
 
-  // ── Links state ────────────────────────────────────────────────────────────
+/* ── Stat card ────────────────────────────────────────────────────────────── */
+function StatCard({ label, value, sub, variant = 'p', icon }) {
+  const n = useCount(typeof value === 'number' ? value : 0);
+  return (
+    <div className="gcard" style={{ position: 'relative', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}>
+      <div className={`sc-${variant}`} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, letterSpacing: '.06em', textTransform: 'uppercase' }}>{label}</span>
+        {icon && <span style={{ fontSize: 16, opacity: 0.5 }}>{icon}</span>}
+      </div>
+      <div style={{ fontFamily: C.display, fontWeight: 800, fontSize: 32, color: C.text, letterSpacing: '-0.03em', lineHeight: 1 }}>
+        {typeof value === 'number' ? n.toLocaleString() : value}
+      </div>
+      {sub && <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted }}>{sub}</div>}
+    </div>
+  );
+}
+
+/* ── Sidebar nav item ─────────────────────────────────────────────────────── */
+function NavItem({ icon, label, active, onClick }) {
+  return (
+    <button className={`nv${active ? ' active' : ''}`} onClick={onClick}>
+      <span style={{ fontSize: 15 }}>{icon}</span>
+      <span>{label}</span>
+      {active && <span className="nv-dot" />}
+    </button>
+  );
+}
+
+/* ── Create panel (slide-in) ─────────────────────────────────────────────── */
+function CreatePanel({ token, toast, onCreated, onClose }) {
   const [url, setUrl] = useState('');
   const [alias, setAlias] = useState('');
   const [expiryMinutes, setExpiryMinutes] = useState(null);
@@ -32,42 +88,6 @@ export function DashboardPage({ toast }) {
   const [deviceOpen, setDeviceOpen] = useState(false);
   const [shortening, setShortening] = useState(false);
   const [result, setResult] = useState(null);
-  const [links, setLinks] = useState([]);
-  const [loadingLinks, setLoadingLinks] = useState(true);
-  const [search, setSearch] = useState('');
-
-  // ── QR state ───────────────────────────────────────────────────────────────
-  const [qrSlug, setQrSlug] = useState('');
-  const [qrName, setQrName] = useState('');
-  const [qrUrl, setQrUrl] = useState('');
-  const [qrNotes, setQrNotes] = useState('');
-  const [qrCreating, setQrCreating] = useState(false);
-  const [qrCodes, setQrCodes] = useState([]);
-  const [loadingQR, setLoadingQR] = useState(false);
-  const [qrSearch, setQrSearch] = useState('');
-  const [selectedQRSlugs, setSelectedQRSlugs] = useState(new Set());
-
-  const fetchLinks = useCallback(async () => {
-    setLoadingLinks(true);
-    try {
-      const r = await fetch(`${API}/api/links`, { headers: { Authorization: `Bearer ${token}` } });
-      const d = await r.json();
-      setLinks(Array.isArray(d) ? d : []);
-    } catch { setLinks([]); }
-    finally { setLoadingLinks(false); }
-  }, [token]);
-
-  const fetchQRCodes = useCallback(async () => {
-    setLoadingQR(true);
-    try {
-      const d = await listQRCodes(token);
-      setQrCodes(Array.isArray(d) ? d : []);
-    } catch { setQrCodes([]); }
-    finally { setLoadingQR(false); }
-  }, [token]);
-
-  useEffect(() => { fetchLinks(); }, [fetchLinks]);
-  useEffect(() => { if (activeTab === 'qr') fetchQRCodes(); }, [activeTab, fetchQRCodes]);
 
   async function handleShorten(e) {
     e.preventDefault();
@@ -97,30 +117,9 @@ export function DashboardPage({ toast }) {
       setPassword(''); setMaxClicks('');
       setIosUrl(''); setAndroidUrl('');
       setOgTitle(''); setOgDesc(''); setOgImage('');
-      fetchLinks();
+      onCreated();
     } catch { toast('Network error.', 'error'); }
     finally { setShortening(false); }
-  }
-
-  async function handleCreateQR(e) {
-    e.preventDefault();
-    if (!qrSlug.trim()) { toast('Slug is required.', 'error'); return; }
-    if (!qrName.trim()) { toast('Name is required.', 'error'); return; }
-    if (!qrUrl.trim()) { toast('Destination URL is required.', 'error'); return; }
-    setQrCreating(true);
-    try {
-      const res = await createQRCode(token, {
-        slug: qrSlug.trim(),
-        name: qrName.trim(),
-        url: qrUrl.trim(),
-        notes: qrNotes.trim(),
-      });
-      if (!res.ok) { toast(res.data?.error || 'Could not create QR code.', 'error'); return; }
-      toast('QR redirect created!', 'success');
-      setQrSlug(''); setQrName(''); setQrUrl(''); setQrNotes('');
-      fetchQRCodes();
-    } catch { toast('Network error.', 'error'); }
-    finally { setQrCreating(false); }
   }
 
   function copyResult() {
@@ -129,310 +128,340 @@ export function DashboardPage({ toast }) {
       .catch(() => toast('Copy failed.', 'error'));
   }
 
+  return (
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="panel">
+        {/* header */}
+        <div style={{ padding: '24px 28px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 20, color: C.text }}>New short link</h3>
+          <button className="bico" onClick={onClose}>✕</button>
+        </div>
+
+        {/* body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {result ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', paddingTop: 40, textAlign: 'center', animation: 'fadeUp .3s both' }}>
+              <div style={{ fontSize: 48 }}>✦</div>
+              <h4 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 22, color: C.text }}>Link created!</h4>
+              <a href={result.short_url} target="_blank" rel="noreferrer"
+                style={{ fontFamily: C.mono, fontSize: 18, color: C.accent, fontWeight: 600, textDecoration: 'none' }}>
+                {result.short_url}
+              </a>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <QRButton url={result.short_url} />
+                <button className="btn-p" onClick={copyResult}>Copy link</button>
+              </div>
+              <button className="btn-g" onClick={() => setResult(null)} style={{ marginTop: 8 }}>Create another</button>
+            </div>
+          ) : (
+            <form onSubmit={handleShorten} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 7 }}>Destination URL *</label>
+                <input className="inp" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/very-long-url" />
+              </div>
+              <div>
+                <label style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 7 }}>Custom alias</label>
+                <input className="inp" value={alias} onChange={e => setAlias(e.target.value)} placeholder="custom-slug (optional)" />
+              </div>
+              <div>
+                <label style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 7 }}>Expiry</label>
+                <ExpiryPicker value={expiryMinutes} onChange={setExpiryMinutes} />
+              </div>
+
+              <button type="button" className="accbtn" onClick={() => setAdvOpen(o => !o)}>
+                <span style={{ fontFamily: C.mono, fontSize: 12 }}>Advanced options</span>
+                <span style={{ fontSize: 10 }}>{advOpen ? '▲' : '▼'}</span>
+              </button>
+              {advOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, animation: 'expandD .2s both' }}>
+                  <input className="inp" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password protection (optional)" />
+                  <input className="inp" type="number" min="1" value={maxClicks} onChange={e => setMaxClicks(e.target.value)} placeholder="Max clicks (optional)" />
+                </div>
+              )}
+
+              <button type="button" className="accbtn" onClick={() => setDeviceOpen(o => !o)}>
+                <span style={{ fontFamily: C.mono, fontSize: 12 }}>Device routing &amp; OG preview</span>
+                <span style={{ fontSize: 10 }}>{deviceOpen ? '▲' : '▼'}</span>
+              </button>
+              {deviceOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, animation: 'expandD .2s both' }}>
+                  <input className="inp" value={iosUrl} onChange={e => setIosUrl(e.target.value)} placeholder="iOS URL" />
+                  <input className="inp" value={androidUrl} onChange={e => setAndroidUrl(e.target.value)} placeholder="Android URL" />
+                  <input className="inp" value={ogTitle} onChange={e => setOgTitle(e.target.value)} placeholder="OG Title" />
+                  <input className="inp" value={ogDesc} onChange={e => setOgDesc(e.target.value)} placeholder="OG Description" />
+                  <input className="inp" value={ogImage} onChange={e => setOgImage(e.target.value)} placeholder="OG Image URL" />
+                </div>
+              )}
+
+              <button type="submit" className="btn-p" disabled={shortening} style={{ marginTop: 4 }}>
+                {shortening ? 'Shortening…' : 'Create short link ✦'}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── Create QR Panel ──────────────────────────────────────────────────────── */
+function CreateQRPanel({ token, toast, onCreated, onClose }) {
+  const [qrSlug, setQrSlug] = useState('');
+  const [qrName, setQrName] = useState('');
+  const [qrUrl, setQrUrl] = useState('');
+  const [qrNotes, setQrNotes] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  async function handleCreate(e) {
+    e.preventDefault();
+    if (!qrSlug.trim()) { toast('Slug is required.', 'error'); return; }
+    if (!qrName.trim()) { toast('Name is required.', 'error'); return; }
+    if (!qrUrl.trim()) { toast('Destination URL is required.', 'error'); return; }
+    setCreating(true);
+    try {
+      const res = await createQRCode(token, { slug: qrSlug.trim(), name: qrName.trim(), url: qrUrl.trim(), notes: qrNotes.trim() });
+      if (!res.ok) { toast(res.data?.error || 'Could not create QR code.', 'error'); return; }
+      toast('QR redirect created!', 'success');
+      setQrSlug(''); setQrName(''); setQrUrl(''); setQrNotes('');
+      onCreated();
+      onClose();
+    } catch { toast('Network error.', 'error'); }
+    finally { setCreating(false); }
+  }
+
+  return (
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="panel">
+        <div style={{ padding: '24px 28px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 20, color: C.text }}>New QR redirect</h3>
+          <button className="bico" onClick={onClose}>✕</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 7 }}>Slug *</label>
+              <input className="inp" value={qrSlug} onChange={e => setQrSlug(e.target.value)} placeholder="e.g. organic-wool" />
+            </div>
+            <div>
+              <label style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 7 }}>Name *</label>
+              <input className="inp" value={qrName} onChange={e => setQrName(e.target.value)} placeholder="e.g. Organic Wool Campaign" />
+            </div>
+            <div>
+              <label style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 7 }}>Destination URL *</label>
+              <input className="inp" value={qrUrl} onChange={e => setQrUrl(e.target.value)} placeholder="https://destination-url.com" />
+            </div>
+            <div>
+              <label style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em', display: 'block', marginBottom: 7 }}>Notes</label>
+              <input className="inp" value={qrNotes} onChange={e => setQrNotes(e.target.value)} placeholder="Optional notes" />
+            </div>
+            <button type="submit" className="btn-p pk" disabled={creating} style={{ marginTop: 4 }}>
+              {creating ? 'Creating…' : 'Create QR redirect ▦'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+export function DashboardPage({ toast }) {
+  const { token, user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('links');
+  const [showCreate, setShowCreate] = useState(false);
+  const [showCreateQR, setShowCreateQR] = useState(false);
+
+  // ── Links state
+  const [links, setLinks] = useState([]);
+  const [loadingLinks, setLoadingLinks] = useState(true);
+  const [search, setSearch] = useState('');
+
+  // ── QR state
+  const [qrCodes, setQrCodes] = useState([]);
+  const [loadingQR, setLoadingQR] = useState(false);
+  const [qrSearch, setQrSearch] = useState('');
+  const [selectedQRSlugs, setSelectedQRSlugs] = useState(new Set());
+
+  const fetchLinks = useCallback(async () => {
+    setLoadingLinks(true);
+    try {
+      const r = await fetch(`${API}/api/links`, { headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      setLinks(Array.isArray(d) ? d : []);
+    } catch { setLinks([]); }
+    finally { setLoadingLinks(false); }
+  }, [token]);
+
+  const fetchQRCodes = useCallback(async () => {
+    setLoadingQR(true);
+    try {
+      const d = await listQRCodes(token);
+      setQrCodes(Array.isArray(d) ? d : []);
+    } catch { setQrCodes([]); }
+    finally { setLoadingQR(false); }
+  }, [token]);
+
+  useEffect(() => { fetchLinks(); }, [fetchLinks]);
+  useEffect(() => { if (activeTab === 'qr') fetchQRCodes(); }, [activeTab, fetchQRCodes]);
+
   const filteredLinks = links.filter(l =>
     !search || l.code.includes(search) || l.original_url.includes(search)
   );
-
   const filteredQR = qrCodes.filter(q =>
     !qrSearch || q.slug.includes(qrSearch) || q.name.toLowerCase().includes(qrSearch.toLowerCase()) || q.url.includes(qrSearch)
   );
 
-  const tabStyle = (active) => ({
-    background: active ? C.accent : 'none',
-    color: active ? '#000' : C.muted,
-    border: `1px solid ${active ? C.accent : C.border2}`,
-    borderRadius: 7, padding: '6px 20px', fontFamily: C.mono, fontSize: 12,
-    cursor: 'pointer', fontWeight: active ? 700 : 400, transition: 'all .15s',
-  });
+  const totalClicks = links.reduce((acc, l) => acc + (l.clicks || 0), 0);
+  const activeLinks = links.filter(l => l.enabled && !(l.expires_at && new Date(l.expires_at) < new Date())).length;
 
   return (
-    <div style={{ minHeight: '100vh', color: C.text }}>
-      <NavBar toast={toast} />
-      <main style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 24px' }}>
+    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, display: 'flex', position: 'relative' }}>
+      <AmbientBg />
 
-        {/* Tab switcher */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 36 }}>
-          <button style={tabStyle(activeTab === 'links')} onClick={() => setActiveTab('links')}>
-            ✦ Short Links
-          </button>
-          <button style={tabStyle(activeTab === 'qr')} onClick={() => setActiveTab('qr')}>
-            ▦ QR Redirects
-          </button>
+      {/* ── Sidebar ── */}
+      <aside style={{
+        position: 'fixed', top: 0, left: 0, bottom: 0, width: 228, zIndex: 100,
+        background: 'rgba(14,12,26,0.75)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
+        borderRight: '1px solid rgba(255,255,255,0.07)',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        {/* ── sidebar edge glow */}
+        <div style={{ position: 'absolute', right: 0, top: '20%', bottom: '20%', width: 1, background: 'linear-gradient(180deg, transparent, rgba(108,99,255,0.35), transparent)' }} />
+
+        {/* logo */}
+        <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <svg width="28" height="28" viewBox="0 0 60 60" fill="none" className="bauna-mark">
+            <rect width="60" height="60" rx="12" fill="rgba(108,99,255,0.15)"/>
+            <path d="M38 18c2 0 3.5 1.5 3.5 3.5 0 1-.5 1.8-1 2.5l-3.5 5c-1.5 2-1.5 2.8.5 4.5l3.5 3c3.5 2.8 6.5 6 6.5 10 0 3.5-2 6.5-5 8s-6 3-9 1.5l-4-2.5c-2.5-2-4.5-4.5-7-6.5l-2-2.5 2.5-4 2.5 2c3 4 6 7.5 9.5 9.5 2 1.5 4 2 5.5 1 1.5-.7 2.5-2 2.5-3.5 0-2.5-2.5-5.5-5-7.5l-4-3c-2-1.5-3-3-3-5 0-1.5 1-3 2-4.5l-1 .5c-.5-.5-1-1-1.5-1.5 1.5-2 2.5-3.5 5-4z" fill="#6C63FF"/>
+            <path d="M22 12c.7 0 2.5 0 3.5.5 4 .5 6.5 3 9 5.5 4 4 7 8 10 12.5l-2.5 3.5-2.5-3c-1.5-2-3-4-4.5-6-2.5-3.5-5.5-7-8.5-9.5-1.5-1.5-3-2.5-5-2.5-1.5 0-3 .7-4 2-1.5 2-1.5 5 0 7 1.5 2.5 4 4.5 6 6.5l4.5 4c1.5 1.5 3 3 3.5 5 1.5 4-1.5 7-3.5 10l.5-.5 1.5 2.5-2.5 3.5c-1.5-.5-2.5-1.5-3-3s0-3.5.5-5l-4.5-4.5c-3.5-3-7-5.5-9.5-9.5-1.5-2.5-2.5-5-2.5-8 0-3 1-6 3-8 2.5-2 5-3.5 8.5-4z" fill="#6C63FF" opacity=".7"/>
+          </svg>
+          <span style={{ fontFamily: C.display, fontWeight: 800, fontSize: 16, color: C.text, letterSpacing: '-0.02em' }}>Baunafier</span>
         </div>
 
-        {/* ── LINKS TAB ────────────────────────────────────────────────────── */}
-        {activeTab === 'links' && (
-          <>
-            {/* Shorten form */}
-            <section style={{ marginBottom: 48 }}>
-              <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 28, color: C.text, marginBottom: 24 }}>Shorten a URL</h2>
-          <form onSubmit={handleShorten}>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-              <input
-                value={url} onChange={e => setUrl(e.target.value)}
-                placeholder="https://example.com/very-long-url"
-                style={{ ...inputStyle, flex: '1 1 280px' }}
-                onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                onBlur={e => e.currentTarget.style.borderColor = C.border2}
-              />
-              <input
-                value={alias} onChange={e => setAlias(e.target.value)}
-                placeholder="custom-alias (optional)"
-                style={{ ...inputStyle, flex: '0 1 200px' }}
-                onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                onBlur={e => e.currentTarget.style.borderColor = C.border2}
-              />
-            </div>
+        {/* nav items */}
+        <nav style={{ flex: 1, paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <NavItem icon="✦" label="Short Links" active={activeTab === 'links'} onClick={() => setActiveTab('links')} />
+          <NavItem icon="▦" label="QR Codes" active={activeTab === 'qr'} onClick={() => setActiveTab('qr')} />
+          <NavItem icon="◉" label="Analytics" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
+          <NavItem icon="◈" label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
+        </nav>
 
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Expiry</div>
-              <ExpiryPicker value={expiryMinutes} onChange={setExpiryMinutes} />
-            </div>
+        {/* user */}
+        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
+          <button className="btn-g btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={logout}>Logout</button>
+        </div>
+      </aside>
 
-            {/* Advanced options collapsible */}
-            <div style={{ marginBottom: 12 }}>
-              <button type="button" onClick={() => setAdvOpen(o => !o)} style={{
-                background: 'none', border: `1px solid ${advOpen ? C.accent : C.border2}`, borderRadius: 6,
-                color: advOpen ? C.accent : C.muted, fontFamily: C.mono, fontSize: 11, cursor: 'pointer',
-                padding: '5px 14px', transition: 'color .15s, border-color .15s',
-              }}>
-                {advOpen ? '▲' : '▼'} Advanced options
-              </button>
-              {advOpen && (
-                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                    placeholder="Password protection (optional)"
-                    style={{ ...inputStyle, flex: '1 1 200px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-                  <input type="number" min="1" value={maxClicks} onChange={e => setMaxClicks(e.target.value)}
-                    placeholder="Max clicks (optional)"
-                    style={{ ...inputStyle, flex: '0 1 160px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-                </div>
-              )}
-            </div>
+      {/* ── Main column ── */}
+      <div style={{ marginLeft: 228, flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
 
-            {/* Device routing & OG preview collapsible */}
-            <div style={{ marginBottom: 18 }}>
-              <button type="button" onClick={() => setDeviceOpen(o => !o)} style={{
-                background: 'none', border: `1px solid ${deviceOpen ? C.accent : C.border2}`, borderRadius: 6,
-                color: deviceOpen ? C.accent : C.muted, fontFamily: C.mono, fontSize: 11, cursor: 'pointer',
-                padding: '5px 14px', transition: 'color .15s, border-color .15s',
-              }}>
-                {deviceOpen ? '▲' : '▼'} Device routing &amp; social preview
-              </button>
-              {deviceOpen && (
-                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  <input value={iosUrl} onChange={e => setIosUrl(e.target.value)}
-                    placeholder="iOS URL (e.g. apps.apple.com/…)"
-                    style={{ ...inputStyle, flex: '1 1 220px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-                  <input value={androidUrl} onChange={e => setAndroidUrl(e.target.value)}
-                    placeholder="Android URL (e.g. play.google.com/…)"
-                    style={{ ...inputStyle, flex: '1 1 220px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-                  <input value={ogTitle} onChange={e => setOgTitle(e.target.value)}
-                    placeholder="OG Title for social previews"
-                    style={{ ...inputStyle, flex: '1 1 220px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-                  <input value={ogDesc} onChange={e => setOgDesc(e.target.value)}
-                    placeholder="OG Description"
-                    style={{ ...inputStyle, flex: '1 1 220px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-                  <input value={ogImage} onChange={e => setOgImage(e.target.value)}
-                    placeholder="OG Image URL"
-                    style={{ ...inputStyle, flex: '1 1 220px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2} />
-                </div>
-              )}
-            </div>
+        {/* TopBar */}
+        <header style={{
+          position: 'sticky', top: 0, zIndex: 90, height: 62,
+          background: 'rgba(14,12,26,0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 32px',
+        }}>
+          <div>
+            <h1 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 18, color: C.text, letterSpacing: '-0.02em' }}>
+              {activeTab === 'links' && 'Short Links'}
+              {activeTab === 'qr' && 'QR Codes'}
+              {activeTab === 'analytics' && 'Analytics'}
+              {activeTab === 'settings' && 'Settings'}
+            </h1>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {activeTab === 'links' && (
+              <button className="btn-p btn-sm" onClick={() => setShowCreate(true)}>+ New link</button>
+            )}
+            {activeTab === 'qr' && (
+              <button className="btn-p pk btn-sm" onClick={() => setShowCreateQR(true)}>+ New QR</button>
+            )}
+          </div>
+        </header>
 
-            <button type="submit" disabled={shortening}
-              style={{ ...primaryBtn, width: 'auto', padding: '10px 28px' }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.boxShadow = '0 0 20px rgba(164,246,112,0.35)'; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = 'none'; }}
-            >{shortening ? 'Shortening…' : 'Shorten ✦'}</button>
-          </form>
+        {/* Page content */}
+        <main style={{ flex: 1, padding: '32px', maxWidth: 1080, width: '100%' }}>
 
-          {result && (
-            <div style={{
-              ...glass, marginTop: 20,
-              borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-              animation: 'fadeUp .25s ease',
-            }}>
-              <div>
-                <div style={{ fontFamily: C.mono, fontSize: 11, color: C.muted, marginBottom: 4 }}>Your short link</div>
-                <a href={result.short_url} target="_blank" rel="noreferrer" style={{ fontFamily: C.mono, fontSize: 18, color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
-                  {result.short_url}
-                </a>
+          {/* ── LINKS TAB ── */}
+          {activeTab === 'links' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28, animation: 'fadeUp .3s both' }}>
+              {/* Stat cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+                <StatCard label="Total links" value={links.length} icon="✦" variant="p" />
+                <StatCard label="Active" value={activeLinks} icon="●" variant="lm" />
+                <StatCard label="Total clicks" value={totalClicks} icon="◉" variant="pk" />
+                <StatCard label="QR codes" value={qrCodes.length} icon="▦" variant="am" />
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <QRButton url={result.short_url} />
-                <button onClick={copyResult}
-                  style={{ ...actionBtn, color: C.accent, borderColor: C.accent, borderRadius: 8, padding: '6px 16px' }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 14px rgba(164,246,112,0.3)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
-                >Copy</button>
+
+              {/* Search + table */}
+              <div className="gcard" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <input className="inp" value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Search links…" style={{ width: 240 }} />
+                  <span style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginLeft: 'auto' }}>
+                    {filteredLinks.length} link{filteredLinks.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                {/* header */}
+                <div className="lrow" style={{ padding: '10px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                  <span>Alias</span><span>Destination</span><span>Trend · Clicks</span>
+                  <span>Status</span><span>Toggle</span><span style={{ textAlign: 'right' }}>Actions</span>
+                </div>
+                {loadingLinks ? (
+                  <div style={{ padding: '40px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>Loading…</div>
+                ) : filteredLinks.length === 0 ? (
+                  <div style={{ padding: '40px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>
+                    {search ? 'No links match your search.' : 'No links yet. Click "+ New link" to create one.'}
+                  </div>
+                ) : filteredLinks.map(entry => (
+                  <LinkRow key={entry.code} entry={entry} token={token} onRefresh={fetchLinks} toast={toast} />
+                ))}
               </div>
             </div>
           )}
-        </section>
 
-        {/* Links table */}
-        <section>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
-            <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 24, color: C.text }}>Your links</h2>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Filter links…"
-              style={{ ...inputStyle, width: 200, fontSize: 12 }}
-              onFocus={e => e.currentTarget.style.borderColor = C.accent}
-              onBlur={e => e.currentTarget.style.borderColor = C.border2}
-            />
-          </div>
-
-          {/* Header row */}
-          <div className="link-row-grid" style={{
-            display: 'grid', gridTemplateColumns: '90px 1fr 64px 110px 80px 200px',
-            gap: 12, padding: '8px 0', borderBottom: `1px solid ${C.border2}`,
-            fontFamily: C.mono, fontSize: 10, color: C.muted,
-            textTransform: 'uppercase', letterSpacing: '0.08em',
-          }}>
-            <span>Alias</span><span>Original URL</span><span style={{ textAlign: 'center' }}>Clicks</span>
-            <span>Status</span><span className="col-created">Created</span><span className="col-actions" style={{ textAlign: 'right' }}>Actions</span>
-          </div>
-
-          {loadingLinks ? (
-            <div style={{ padding: '32px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>Loading links…</div>
-          ) : filteredLinks.length === 0 ? (
-            <div style={{ padding: '32px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>
-              {search ? 'No links match your filter.' : 'No links yet. Create one above!'}
-            </div>
-          ) : (
-            filteredLinks.map(entry => (
-              <LinkRow key={entry.code} entry={entry} token={token} onRefresh={fetchLinks} toast={toast} />
-            ))
-          )}
-        </section>
-          </>
-        )}
-
-        {/* ── QR REDIRECTS TAB ─────────────────────────────────────────────── */}
-        {activeTab === 'qr' && (
-          <>
-            {/* Create QR form */}
-            <section style={{ marginBottom: 48 }}>
-              <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 28, color: C.text, marginBottom: 8 }}>
-                Create a QR Redirect
-              </h2>
-              <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginBottom: 24 }}>
-                Create a named redirect behind a QR code. Scan live at{' '}
-                <span style={{ color: C.accent }}>go.baunafier.qzz.io/qr/&lt;slug&gt;</span>
-              </p>
-              <form onSubmit={handleCreateQR}>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                  <input
-                    value={qrSlug}
-                    onChange={e => setQrSlug(e.target.value)}
-                    placeholder="slug (e.g. organic-wool)"
-                    style={{ ...inputStyle, flex: '0 1 200px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2}
-                  />
-                  <input
-                    value={qrName}
-                    onChange={e => setQrName(e.target.value)}
-                    placeholder="Name (e.g. Organic Wool)"
-                    style={{ ...inputStyle, flex: '0 1 220px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2}
-                  />
+          {/* ── QR TAB ── */}
+          {activeTab === 'qr' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp .3s both' }}>
+              <div className="gcard" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <input className="inp" value={qrSearch} onChange={e => setQrSearch(e.target.value)}
+                    placeholder="Search QR codes…" style={{ width: 240 }} />
+                  <span style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginLeft: 'auto' }}>
+                    {filteredQR.length} QR code{filteredQR.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                  <input
-                    value={qrUrl}
-                    onChange={e => setQrUrl(e.target.value)}
-                    placeholder="https://destination-url.com"
-                    style={{ ...inputStyle, flex: '1 1 320px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '20px 120px 1fr 64px 100px 80px 200px',
+                  gap: 12, padding: '10px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+                  fontFamily: C.mono, fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '.08em',
+                }}>
+                  <input type="checkbox"
+                    checked={filteredQR.length > 0 && filteredQR.every(q => selectedQRSlugs.has(q.slug))}
+                    onChange={e => {
+                      if (e.target.checked) setSelectedQRSlugs(new Set(filteredQR.map(q => q.slug)));
+                      else setSelectedQRSlugs(new Set());
+                    }}
+                    aria-label="Select all"
+                    style={{ accentColor: C.accent, width: 14, height: 14, cursor: 'pointer' }}
                   />
-                  <input
-                    value={qrNotes}
-                    onChange={e => setQrNotes(e.target.value)}
-                    placeholder="Notes (optional)"
-                    style={{ ...inputStyle, flex: '1 1 220px' }}
-                    onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                    onBlur={e => e.currentTarget.style.borderColor = C.border2}
-                  />
+                  <span>Slug</span><span>Name / Destination</span>
+                  <span style={{ textAlign: 'center' }}>Scans</span>
+                  <span>Status</span><span>Created</span><span style={{ textAlign: 'right' }}>Actions</span>
                 </div>
-                <button type="submit" disabled={qrCreating}
-                  style={{ ...primaryBtn, width: 'auto', padding: '10px 28px' }}
-                  onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.boxShadow = '0 0 20px rgba(164,246,112,0.35)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = 'none'; }}
-                >
-                  {qrCreating ? 'Creating…' : 'Create QR redirect ▦'}
-                </button>
-              </form>
-            </section>
-
-            {/* QR codes table */}
-            <section>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
-                <h2 style={{ fontFamily: C.display, fontStyle: 'italic', fontSize: 24, color: C.text }}>Your QR codes</h2>
-                <input
-                  value={qrSearch}
-                  onChange={e => setQrSearch(e.target.value)}
-                  placeholder="Filter QR codes…"
-                  style={{ ...inputStyle, width: 200, fontSize: 12 }}
-                  onFocus={e => e.currentTarget.style.borderColor = C.accent}
-                  onBlur={e => e.currentTarget.style.borderColor = C.border2}
-                />
-              </div>
-
-              {/* Header row */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: '20px 120px 1fr 64px 100px 80px 200px',
-                gap: 12, padding: '8px 0', borderBottom: `1px solid ${C.border2}`,
-                fontFamily: C.mono, fontSize: 10, color: C.muted,
-                textTransform: 'uppercase', letterSpacing: '0.08em',
-              }}>
-                <input type="checkbox"
-                  checked={filteredQR.length > 0 && filteredQR.every(q => selectedQRSlugs.has(q.slug))}
-                  onChange={e => {
-                    if (e.target.checked) setSelectedQRSlugs(new Set(filteredQR.map(q => q.slug)));
-                    else setSelectedQRSlugs(new Set());
-                  }}
-                  aria-label="Select all QR codes"
-                  style={{ accentColor: C.accent, width: 14, height: 14, cursor: 'pointer' }}
-                />
-                <span>Slug</span>
-                <span>Name / Destination</span>
-                <span style={{ textAlign: 'center' }}>Scans</span>
-                <span>Status</span>
-                <span>Created</span>
-                <span style={{ textAlign: 'right' }}>Actions</span>
-              </div>
-
-              {loadingQR ? (
-                <div style={{ padding: '32px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>
-                  Loading QR codes…
-                </div>
-              ) : filteredQR.length === 0 ? (
-                <div style={{ padding: '32px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>
-                  {qrSearch ? 'No QR codes match your filter.' : 'No QR redirects yet. Create one above!'}
-                </div>
-              ) : (
-                filteredQR.map(entry => (
-                  <QRCodeRow
-                    key={entry.slug} entry={entry} token={token} onRefresh={fetchQRCodes} toast={toast}
+                {loadingQR ? (
+                  <div style={{ padding: '40px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>Loading…</div>
+                ) : filteredQR.length === 0 ? (
+                  <div style={{ padding: '40px 0', textAlign: 'center', color: C.muted, fontFamily: C.mono, fontSize: 13 }}>
+                    {qrSearch ? 'No QR codes match.' : 'No QR redirects yet. Click "+ New QR".'}
+                  </div>
+                ) : filteredQR.map(entry => (
+                  <QRCodeRow key={entry.slug} entry={entry} token={token} onRefresh={fetchQRCodes} toast={toast}
                     selected={selectedQRSlugs.has(entry.slug)}
                     onSelect={(slug, checked) => setSelectedQRSlugs(prev => {
                       const next = new Set(prev);
@@ -440,76 +469,84 @@ export function DashboardPage({ toast }) {
                       return next;
                     })}
                   />
-                ))
-              )}
-            </section>
-
-            {/* ── Bulk Import / Export ──────────────────────────────────────── */}
-            <details style={{ marginTop: 32 }}>
-              <summary style={{
-                fontFamily: C.mono, fontSize: 12, color: C.muted, cursor: 'pointer',
-                padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
-                borderRadius: 8, border: `1px solid ${C.border2}`,
-                listStyle: 'none', userSelect: 'none',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border2; e.currentTarget.style.color = C.muted; }}>
-                ⇅ Bulk Import / Export
-                {selectedQRSlugs.size > 0 && (
-                  <span style={{ marginLeft: 8, background: C.accent, color: '#000', borderRadius: 10, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>
-                    {selectedQRSlugs.size} selected
-                  </span>
-                )}
-              </summary>
-              <div style={{ padding: '20px 0' }}>
-                <QRBulkPanel
-                  selectedSlugs={selectedQRSlugs}
-                  qrCodes={qrCodes}
-                  token={token}
-                  onRefresh={fetchQRCodes}
-                  toast={toast}
-                />
+                ))}
               </div>
-            </details>
 
-            {/* ── Batch QR Image Export ─────────────────────────────────────── */}
-            <details style={{ marginTop: 12 }}>
-              <summary style={{
-                fontFamily: C.mono, fontSize: 12, color: C.muted, cursor: 'pointer',
-                padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
-                borderRadius: 8, border: `1px solid ${C.border2}`,
-                listStyle: 'none', userSelect: 'none',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border2; e.currentTarget.style.color = C.muted; }}>
-                ⊞ Batch QR Image Export
-              </summary>
-              <div style={{ padding: '20px 0' }}>
-                <QRBatch baseOptions={{ dotType:'rounded', cornerSq:'extra-rounded', cornerDot:'dot', dark:'#0a0a0a', light:'#A4F670', ecLevel:'M' }} />
+              {/* Bulk / Decode panels */}
+              <details style={{ marginTop: 4 }}>
+                <summary className="accbtn" style={{ listStyle: 'none', display: 'flex', cursor: 'pointer' }}>
+                  <span>⇅ Bulk Import / Export</span>
+                  {selectedQRSlugs.size > 0 && (
+                    <span style={{ marginLeft: 8, background: C.accent, color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>
+                      {selectedQRSlugs.size} selected
+                    </span>
+                  )}
+                  <span style={{ marginLeft: 'auto' }}>▼</span>
+                </summary>
+                <div style={{ padding: '16px 0' }}>
+                  <QRBulkPanel selectedSlugs={selectedQRSlugs} qrCodes={qrCodes} token={token} onRefresh={fetchQRCodes} toast={toast} />
+                </div>
+              </details>
+              <details>
+                <summary className="accbtn" style={{ listStyle: 'none', display: 'flex', cursor: 'pointer' }}>
+                  <span>⊞ Batch QR Image Export</span><span style={{ marginLeft: 'auto' }}>▼</span>
+                </summary>
+                <div style={{ padding: '16px 0' }}>
+                  <QRBatch baseOptions={{ dotType:'rounded', cornerSq:'extra-rounded', cornerDot:'dot', dark:'#0a0a0a', light:'#6C63FF', ecLevel:'M' }} />
+                </div>
+              </details>
+              <details>
+                <summary className="accbtn" style={{ listStyle: 'none', display: 'flex', cursor: 'pointer' }}>
+                  <span>⊙ Decode QR from Image</span><span style={{ marginLeft: 'auto' }}>▼</span>
+                </summary>
+                <div style={{ padding: '16px 0' }}>
+                  <QRDecodePanel />
+                </div>
+              </details>
+            </div>
+          )}
+
+          {/* ── ANALYTICS TAB ── */}
+          {activeTab === 'analytics' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp .3s both' }}>
+              <p style={{ fontFamily: C.mono, fontSize: 13, color: C.muted }}>Select a link to view its analytics, or browse per-link analytics inline in the Links tab.</p>
+              {links.slice(0, 10).map(l => (
+                <div key={l.code} className="gcard" style={{ padding: '18px 20px' }}>
+                  <div style={{ fontFamily: C.mono, fontSize: 13, color: C.accent, fontWeight: 600, marginBottom: 12 }}>/{l.code}</div>
+                  <AnalyticsPanel code={l.code} token={token} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── SETTINGS TAB ── */}
+          {activeTab === 'settings' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp .3s both', maxWidth: 580 }}>
+              <div className="gcard" style={{ padding: '24px 26px' }}>
+                <h3 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 18, color: C.text, marginBottom: 18 }}>Account</h3>
+                <div style={{ fontFamily: C.mono, fontSize: 13, color: C.muted, marginBottom: 6 }}>Email</div>
+                <div style={{ fontFamily: C.mono, fontSize: 14, color: C.text, marginBottom: 20 }}>{user?.email}</div>
+                <div style={{ fontFamily: C.mono, fontSize: 13, color: C.muted, marginBottom: 6 }}>Role</div>
+                <div style={{ fontFamily: C.mono, fontSize: 14, color: C.text }}>{user?.role || 'user'}</div>
               </div>
-            </details>
-
-            {/* ── Decode QR from Image ──────────────────────────────────────── */}
-            <details style={{ marginTop: 12, marginBottom: 40 }}>
-              <summary style={{
-                fontFamily: C.mono, fontSize: 12, color: C.muted, cursor: 'pointer',
-                padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
-                borderRadius: 8, border: `1px solid ${C.border2}`,
-                listStyle: 'none', userSelect: 'none',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border2; e.currentTarget.style.color = C.muted; }}>
-                ⊙ Decode QR from Image
-              </summary>
-              <div style={{ padding: '20px 0' }}>
-                <QRDecodePanel />
+              <div className="gcard" style={{ padding: '24px 26px' }}>
+                <h3 style={{ fontFamily: C.display, fontWeight: 800, fontSize: 18, color: C.text, marginBottom: 18 }}>Danger zone</h3>
+                <p style={{ fontFamily: C.mono, fontSize: 12, color: C.muted, marginBottom: 16 }}>Permanently delete your account and all associated data.</p>
+                <button className="btn-g" style={{ border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}
+                  onClick={() => toast('Account deletion not yet available.', 'error')}>
+                  Delete account
+                </button>
               </div>
-            </details>
-          </>
-        )}
+            </div>
+          )}
 
-      </main>
+        </main>
+      </div>
+
+      {/* ── Create panels ── */}
+      {showCreate && <CreatePanel token={token} toast={toast} onCreated={fetchLinks} onClose={() => setShowCreate(false)} />}
+      {showCreateQR && <CreateQRPanel token={token} toast={toast} onCreated={fetchQRCodes} onClose={() => setShowCreateQR(false)} />}
     </div>
   );
 }
+

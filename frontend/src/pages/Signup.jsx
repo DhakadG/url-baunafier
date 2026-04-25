@@ -61,7 +61,7 @@ export function SignupPage({ toast }) {
         <InputField label="Confirm password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
         {error && <div style={{ color: C.error, fontFamily: C.mono, fontSize: 13, marginBottom: 14 }}>{error}</div>}
         <button type="submit" disabled={loading} style={primaryBtn}
-          onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.boxShadow = '0 0 20px rgba(164,246,112,0.35)'; }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.boxShadow = '0 0 20px rgba(108,99,255,0.35)'; }}
           onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = 'none'; }}
         >{loading ? 'Creating…' : 'Create account'}</button>
       </form>

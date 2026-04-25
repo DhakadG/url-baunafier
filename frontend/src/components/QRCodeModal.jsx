@@ -38,7 +38,7 @@ const DATA_TYPES = [
 ];
 
 const PRESETS = [
-  { name:'Baunafier',   dotType:'rounded',        cornerSq:'extra-rounded', cornerDot:'dot',    dark:'#0a0a0a', light:'#A4F670' },
+  { name:'Baunafier',   dotType:'rounded',        cornerSq:'extra-rounded', cornerDot:'dot',    dark:'#07060f', light:'#6C63FF' },
   { name:'Midnight',    dotType:'classy-rounded', cornerSq:'extra-rounded', cornerDot:'dot',    dark:'#ffffff', light:'#0a0a0a' },
   { name:'Forest',      dotType:'extra-rounded',  cornerSq:'extra-rounded', cornerDot:'square', dark:'#1a3a2a', light:'#c8f5d0' },
   { name:'Monochrome',  dotType:'square',         cornerSq:'square',        cornerDot:'square', dark:'#000000', light:'#ffffff' },
@@ -55,10 +55,10 @@ const STORAGE_KEY = 'qr-config-v1';
 const DEFAULTS = {
   dataType:'url', dataValues:{url:''},
   dotType:'rounded', cornerSq:'extra-rounded', cornerDot:'dot',
-  dark:'#0a0a0a', light:'#A4F670', ecLevel:'M',
+  dark:'#07060f', light:'#6C63FF', ecLevel:'M',
   logoDataUrl:null,
   dotFill:'solid', gradientType:'linear', gradientAngle:45,
-  gradientColor1:'#0a0a0a', gradientColor2:'#A4F670',
+  gradientColor1:'#07060f', gradientColor2:'#6C63FF',
   frameTop:'', frameBottom:'',
   frameTextColor:'#0a0a0a', frameBgColor:'#ffffff',
   frameBorderColor:'#cccccc', frameBorderWidth:0,
@@ -96,7 +96,7 @@ function FieldInput({ label, ...props }) {
     <label style={{ display:'block' }}>
       <div style={{ fontFamily:C.mono, fontSize:10, color:C.muted, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:4 }}>{label}</div>
       <input {...props} style={{ ...inputStyle, marginBottom:8, fontSize:13, ...(props.style||{}) }}
-        onFocus={e=>{e.target.style.borderColor=C.accent;e.target.style.boxShadow='0 0 0 3px rgba(164,246,112,0.06)';}}
+        onFocus={e=>{e.target.style.borderColor=C.accent;e.target.style.boxShadow='0 0 0 3px rgba(108,99,255,0.12)';}}  
         onBlur={e=>{e.target.style.borderColor=C.border2;e.target.style.boxShadow='none';}} />
     </label>
   );
@@ -110,7 +110,7 @@ function DataForm({ type, values, onChange }) {
     <label style={{ display:'block' }}>
       <div style={{ fontFamily:C.mono, fontSize:10, color:C.muted, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:4 }}>Text</div>
       <textarea value={values.text||''} onChange={set('text')} placeholder="Any text…" rows={4} style={{ ...inputStyle, resize:'vertical', fontSize:13, marginBottom:8 }}
-        onFocus={e=>{e.target.style.borderColor=C.accent;e.target.style.boxShadow='0 0 0 3px rgba(164,246,112,0.06)';}}
+        onFocus={e=>{e.target.style.borderColor=C.accent;e.target.style.boxShadow='0 0 0 3px rgba(108,99,255,0.12)';}}
         onBlur={e=>{e.target.style.borderColor=C.border2;e.target.style.boxShadow='none';}} />
     </label>
   );
@@ -430,7 +430,7 @@ export function QRCodeModal({ url: initialUrl, onClose }) {
               borderRadius: hasFrame ? frameBorderRadius + 'px' : 12,
               border: hasFrame && frameBorderWidth > 0
                 ? `${frameBorderWidth}px solid ${frameBorderColor}`
-                : '1px solid rgba(164,246,112,0.15)',
+                : '1px solid rgba(108,99,255,0.2)',
               overflow:'hidden', width: PREVIEW_SIZE, flexShrink:0,
             }}>
               {frameTop && (
@@ -477,7 +477,7 @@ export function QRCodeModal({ url: initialUrl, onClose }) {
               {['PNG','JPG','SVG'].map(ext => (
                 <button key={ext} type="button" onClick={() => download(ext.toLowerCase())} aria-label={`Download ${ext}`}
                   style={{ ...primaryBtn, padding:'8px 0', fontSize:11 }}
-                  onMouseEnter={e=>{e.currentTarget.style.opacity='.88';e.currentTarget.style.boxShadow='0 0 16px rgba(164,246,112,0.35)';}}
+                  onMouseEnter={e=>{e.currentTarget.style.opacity='.88';e.currentTarget.style.boxShadow='0 0 16px rgba(108,99,255,0.35)';}}  
                   onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.boxShadow='none';}}>
                   ↓ {ext}
                 </button>

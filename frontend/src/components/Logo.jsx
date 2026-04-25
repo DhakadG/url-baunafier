@@ -9,7 +9,7 @@ const LOGO_PATHS = [
   'M148.485 130.108C165.032 128.077 173.043 143.867 183.815 153.724C190.341 159.696 196.832 166.883 202.913 173.237C208.768 179.354 210.611 189.494 206.662 197.023C203.387 203.59 198.971 205.791 192.448 208.034C175.972 210.682 166.97 193.953 156.185 184.187C150.269 177.609 142.736 171.699 137.231 164.844C125.934 150.776 132.366 134.75 148.485 130.108Z',
 ];
 
-function BaunaMarkSVG({ height = 32, color = C.accent }) {
+function BaunaMarkSVG({ height = 32, color = '#6C63FF' }) {
   const w = Math.round(height * 456 / 487);
   return (
     <svg
@@ -42,9 +42,9 @@ export function Logo({ size = 'lg' }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: isLg ? 12 : 7, userSelect: 'none' }}>
       <BaunaMarkSVG height={isLg ? 54 : 27} />
       <span style={{
-        fontFamily: C.space, fontWeight: 800,
+        fontFamily: C.display, fontWeight: 800,
         fontSize: isLg ? 40 : 20,
-        color: C.text, letterSpacing: '-0.02em', lineHeight: 1,
+        color: C.text, letterSpacing: '-0.03em', lineHeight: 1,
         animation: isLg ? 'baunaText .6s .45s cubic-bezier(.22,1,.36,1) both' : undefined,
       }}>Baunafier</span>
     </div>

@@ -17,7 +17,7 @@ function WorldMap({ clicksByCountry }) {
               const iso2 = NUM_ISO2[Number(geo.id)];
               const count = (clicksByCountry || {})[iso2] || 0;
               const intensity = count > 0 ? Math.min(1, 0.2 + (count / maxClicks) * 0.8) : 0;
-              const fill = count > 0 ? `rgba(200,255,0,${intensity.toFixed(2)})` : C.border;
+              const fill = count > 0 ? `rgba(108,99,255,${intensity.toFixed(2)})` : C.border;
               return (
                 <Geography
                   key={geo.rsmKey}
@@ -26,7 +26,7 @@ function WorldMap({ clicksByCountry }) {
                   fill={fill}
                   stroke={C.bg}
                   strokeWidth={0.5}
-                  style={{ default: { outline: 'none' }, hover: { fill: C.accent, outline: 'none', cursor: 'pointer' }, pressed: { outline: 'none' } }}
+                  style={{ default: { outline: 'none' }, hover: { fill: C.accent2, outline: 'none', cursor: 'pointer' }, pressed: { outline: 'none' } }}
                 />
               );
             })
@@ -51,9 +51,9 @@ function HourlyBarChart({ data }) {
         {data.map((v, i) => (
           <div key={i} onMouseEnter={() => setTip(i)} onMouseLeave={() => setTip(null)}
             style={{
-              flex: 1, background: tip === i ? C.accentDim : (v ? C.accent : C.border), borderRadius: 2,
+              flex: 1, background: tip === i ? 'rgba(108,99,255,0.7)' : (v ? C.accent : 'rgba(255,255,255,0.06)'), borderRadius: 2,
               height: `${Math.max(3, (v / max) * 100)}%`,
-              opacity: v > 0 ? 1 : 0.25, transition: 'height .3s, opacity .3s, background .1s',
+              opacity: v > 0 ? 1 : 0.25, transition: 'height .3s, opacity .3s, background .1s', borderRadius: 2,
               cursor: 'default',
             }} />
         ))}
